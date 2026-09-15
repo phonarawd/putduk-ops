@@ -1,0 +1,163 @@
+{
+  "updatedAt": "2026-09-15T02:47:53+09:00",
+  "opsHead": "7b78beb93033da8b6c312f437762fd6b440e6ecf",
+  "opsWorkingTree": "dirty_preserved_contract_connect_finish",
+  "backendHead": "31c8e7310032444e7bb3abe879d40cafc22b8bbe",
+  "backendBranch": "feat/operator-registered-catalog-s1",
+  "backendDirty": true,
+  "backendOperatorControlPorcelain": "clean",
+  "backendManifestEmbeddedHead": "ec436d4d32937f2778b4b764e89918de2ca70280",
+  "backendManifestRead": "2026-09-15.mall-persist-v3",
+  "backendManifestSha256": "71a5d90f34c937b553e801ba5b907eefb29e71129586c315de0b1fd3c17fd510",
+  "backendManifestReadAt": "2026-09-15T02:23:38+09:00",
+  "backendManifestRecheckAt": "2026-09-15T02:26:37+09:00",
+  "persistStatusSha256": "ebc9caede7a2eddc3fb49817cd70c45a871b1ecf4135cfe5d5a0df27310cdd3d",
+  "persistStatusVersion": "2026-09-15.persist-status-v2",
+  "productVisibilitySha256": "89714a195816b5d5a9303c2f3c9f5ade05d726f206ea50c6981b79a7c3d9bf1f",
+  "webHead": "db187835445c20312c6fa232e11a7bbd6fbcb659",
+  "contractVersionOpsConstant": "2026-09-14.b3.display-v19",
+  "contractVersionBackendManifest": "2026-09-15.mall-persist-v3",
+  "schemaApplied": false,
+  "storeReady": false,
+  "publishedToUiRepo": false,
+  "commitPushDeploy": 0,
+  "investigation": "ADMIN_INVESTIGATION_20260915.md",
+  "checkpoint": "adapter_isolation_contract_compared_min_integration_mock_pass",
+  "note": "화면 연결 마무리 + 격리 보강. 운영 준비 완료가 아님. mock PASS ≠ 실서버 PASS. 실지급 PASS 아님. 조건부 실통합 BLOCKED.",
+  "items": [
+    {
+      "id": "OPS-CONTRACT-SYNC",
+      "status": "recorded_read_not_forced",
+      "severity": "P1",
+      "source": "lib/admin/contract.ts",
+      "blocked": "git HEAD 31c8e73 ≠ 매니페스트 내장 head ec436d4. fingerprint는 읽은 sha256. 맞추지 않음",
+      "next": "백엔드 계약 봉인 후 같은 매니페스트를 세 레포가 수신했다고 쓸 것"
+    },
+    {
+      "id": "OPS-AUTH",
+      "status": "path_connected_store_blocked",
+      "source": "app/admin-screens/login-screen.tsx",
+      "defects": ["OPS-D01"],
+      "api": "GET /admin-session · POST /admin-session/login",
+      "blocked": "직원 자격 저장소 unready · 503 ≠ 완료",
+      "next": "저장소 ready 실측 + ACK 후에만 성공 쿠키"
+    },
+    {
+      "id": "OPS-ID-GUARD",
+      "status": "implemented_member_scoped",
+      "source": "lib/admin/identity.ts · live-adapter.ts · membership-screen.tsx",
+      "defects": ["OPS-D03", "OPS-D21", "OPS-D27"],
+      "note": "회원 대상만 userId 대조 + 세대 토큰. 공용 상품·등급에 userId 의무화 철회",
+      "next": "회원 대상 계약에 userId가 있으면 대조 유지. 실서버 레이스는 BLOCKED"
+    },
+    {
+      "id": "OPS-HONEST-UI",
+      "status": "implemented",
+      "source": "app/admin-app.tsx, draft-screens.tsx, copy.ts",
+      "defects": ["OPS-D02", "OPS-D09", "OPS-D10", "OPS-D11", "OPS-D14"]
+    },
+    {
+      "id": "OPS-MONEY-AUTHORITY",
+      "status": "screen_connected_ledger_blocked",
+      "source": "lib/admin/money-authority.ts · catalog-screen.tsx",
+      "note": "예상/설정/실지급 구분. payoutAuthoritative 아니면 완료 금지. mock만",
+      "next": "실서버 moneyAuthority + 저널 실측 후에만 지급 완료 표시"
+    },
+    {
+      "id": "OPS-USER-SEARCH",
+      "status": "implemented_uuid_only",
+      "source": "app/admin-screens/membership-screen.tsx",
+      "api": "GET /admin/users?q= UUID · 빈 q 미호출",
+      "blocked": "페이지 목록 저장소 없음. /me/membership 대체 금지",
+      "next": "목록 ready 또는 UUID-only를 계약과 동일하게 봉인"
+    },
+    {
+      "id": "OPS-CAP-GRADE",
+      "status": "implemented_adapter",
+      "source": "app/admin-screens/membership-screen.tsx",
+      "api": "daily-match-cap / bonus / force / quota-projection",
+      "store": "unready_draft_schema",
+      "next": "실 스키마 ready 실측 후 재조회 확인"
+    },
+    {
+      "id": "OPS-GRADE-DEFAULTS",
+      "status": "implemented_adapter",
+      "source": "app/admin-screens/grades-screen.tsx",
+      "api": "GET/PUT /api/v1/admin/membership/grade-daily-caps",
+      "next": "409 revision · 503 화면 유지"
+    },
+    {
+      "id": "OPS-DISPLAY",
+      "status": "implemented_adapter",
+      "source": "app/admin-screens/presentation-screen.tsx",
+      "api": "GET/PUT /api/v1/admin/membership/presentation-profile",
+      "not": "GET/PUT /api/v1/admin/execution-policy",
+      "next": "putduk-web Journey 소비는 다른 레포"
+    },
+    {
+      "id": "OPS-CATALOG-S2",
+      "status": "screen_connected_no_list_get_persist_blocked",
+      "source": "app/admin-screens/catalog-screen.tsx",
+      "api": "POST operator-products · PATCH operator-product · PATCH visibility · GET participations",
+      "note": "목록/단건 GET 없음. 아는 UUID+저장 응답만. expectedRevision 전송. core 409는 아직 없음. priceConfirmationMemo 코어·실컬럼 없음",
+      "next": "백엔드 persist+실컬럼+core revision 후 재조회. 선택 공개는 권한이지 예약이 아님"
+    },
+    {
+      "id": "BE-LOGIN-STORE",
+      "status": "blocked",
+      "repo": "AI_PROFIT_OS",
+      "next": "admin staff credentials ready + ACK"
+    },
+    {
+      "id": "BE-DIRECTORY",
+      "status": "blocked",
+      "repo": "AI_PROFIT_OS",
+      "next": "목록 저장소 또는 UUID-only를 계약과 동일하게 봉인. 회원 대상 응답에만 userId. 공용 DTO 의무화 금지"
+    },
+    {
+      "id": "BE-D04",
+      "status": "source_confirmed_real_pg_blocked",
+      "repo": "AI_PROFIT_OS",
+      "sourceConfirmed": true,
+      "realPostgresConcurrency": "BLOCKED",
+      "evidence": "participate.service.ts user_id=$2 · participate-http.cjs. 계약 JSON crossUserInFlightSlot 문구는 지연",
+      "next": "격리 QA Postgres A/B 동시 참여. 소스 확인만으로 PASS 금지"
+    },
+    {
+      "id": "BE-MALL-SLOT",
+      "status": "source_slot_confirmed_persist_blocked",
+      "repo": "AI_PROFIT_OS",
+      "next": "visibility·priceConfirmationMemo 실컬럼 apply · 리셀러 실DB 검증 · 실 Postgres 동시성. 슬롯 소스 user_id는 확인됨"
+    },
+    {
+      "id": "WEB-CONCEPT",
+      "status": "blocked",
+      "repo": "PUTDUK_WEB",
+      "next": "예상액≠정산 · 리셀러 서버 필드 · 시세 게이트 의미를 메모와 분리. Admin API 노출 금지"
+    },
+    {
+      "id": "OPS-SUPPORT",
+      "status": "draft_only",
+      "api": "GET/POST /api/v1/admin/users/:id/ops-messages",
+      "next": "회원 UUID가 확정된 뒤 쪽지 목록만"
+    },
+    {
+      "id": "OPS-AI",
+      "status": "blocked",
+      "note": "전체 대화 표시 정책 미승인. preview ≠ transcript",
+      "next": "B5 소유권 계약"
+    },
+    {
+      "id": "OPS-FINANCE",
+      "status": "blocked",
+      "note": "F09/F10. 잔액 setter 없음. 화면 초안",
+      "next": "원장 moneyAuthority 실측 전 지급 완료 표시 금지"
+    },
+    {
+      "id": "OPS-KYC",
+      "status": "draft_only",
+      "api": "GET /api/v1/admin/compliance/kyc",
+      "next": "실회원 서류 없이 필드 확인 후"
+    }
+  ]
+}

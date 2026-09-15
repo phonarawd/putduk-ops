@@ -10,7 +10,14 @@
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "deploy:ops": "node scripts/cf-deploy-ops.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern quality --ignore-pattern scripts",
+    "typecheck": "tsc --noEmit",
+    "test:isolated-admin": "node --experimental-strip-types quality/isolation/isolated-admin-flow.test.mts",
+    "qa:isolated-admin": "node scripts/with-heavy-qa-lock.mjs node --experimental-strip-types quality/isolation/isolated-admin-flow.test.mts",
+    "test:admin-screens:chromium": "node quality/isolation/run-playwright.mjs",
+    "test:admin-screens:webkit": "node quality/isolation/run-playwright.mjs --webkit",
+    "qa:min-integration": "node scripts/with-heavy-qa-lock.mjs node quality/isolation/run-min-integration.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
@@ -42,6 +49,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

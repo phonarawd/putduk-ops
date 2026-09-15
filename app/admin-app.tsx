@@ -1,100 +1,445 @@
 "use client";
+
 import Link from "next/link";
-import {useEffect,useMemo,useState} from "react";
-import {Activity,AlertTriangle,Bell,Bot,Check,ChevronDown,ChevronRight,CircleDollarSign,ClipboardCheck,Eye,EyeOff,FileText,LayoutDashboard,LockKeyhole,LogOut,Menu,MessageSquareText,Search,Settings,ShieldCheck,Sparkles,UserRoundCheck,UsersRound,WalletCards,X} from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ClipboardCheck,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  UserRoundCheck,
+  UsersRound,
+  WalletCards,
+  X,
+} from "lucide-react";
+import { createAdminAdapter, sessionLabel } from "../lib/admin/adapter";
+import { COPY } from "../lib/admin/copy";
+import { appPath, navHref } from "../lib/admin-routes";
+import { rememberIsolatedQa, resolveOrigin, type OriginDecision } from "../lib/admin/origin";
+import type { AdminSession } from "../lib/admin/types";
+import { CatalogScreen } from "./admin-screens/catalog-screen";
+import {
+  Content,
+  Conversation,
+  Conversations,
+  DraftUserExtras,
+  History,
+  Identity,
+  Money,
+  Reports,
+  Safety,
+  Service,
+  Staff,
+  Support,
+} from "./admin-screens/draft-screens";
+import { GradesScreen } from "./admin-screens/grades-screen";
+import { LoginScreen } from "./admin-screens/login-screen";
+import { MembershipWorkspace, UsersSearch } from "./admin-screens/membership-screen";
+import { PresentationScreen } from "./admin-screens/presentation-screen";
+import { QaBanner, WaitBanner } from "./admin-screens/shared";
 
-type Tone="green"|"amber"|"red"|"blue"|"gray";
-const groups=[
- {label:"오늘 할 일",href:"/",icon:LayoutDashboard},
- {label:"회원과 상담",href:"/users",icon:UsersRound,children:[["회원 찾기","/users"],["문의함","/support"],["퍼뜩 AI 대화","/conversations/ai"]]},
- {label:"돈과 거래",href:"/money/withdrawals",icon:WalletCards,children:[["입금 확인","/money/deposits"],["출금 요청","/money/withdrawals"],["전체 거래","/money/transactions"],["맞지 않는 금액","/money/mismatches"]]},
- {label:"본인 확인",href:"/identity",icon:UserRoundCheck},
- {label:"공지와 이벤트",href:"/content/notices",icon:Sparkles,children:[["공지사항","/content/notices"],["이벤트","/content/events"],["혜택","/content/benefits"],["배너","/content/banners"],["알림 보내기","/content/messages"]]},
- {label:"안전 관리",href:"/safety/alerts",icon:ShieldCheck,children:[["이상한 이용","/safety/alerts"],["검토 사건","/safety/cases"],["차단 목록","/safety/lists"],["이용 한도","/safety/limits"]]},
- {label:"운영 현황",href:"/reports",icon:Activity},
- {label:"직원과 기록",href:"/staff",icon:ClipboardCheck,children:[["직원","/staff"],["승인 요청","/staff/approvals"],["작업 기록","/activity"],["열람 기록","/activity/access"]]},
- {label:"서비스 설정",href:"/service",icon:Settings,children:[["서비스 상태","/service"],["진행 중인 문제","/service/incidents"],["점검 일정","/service/maintenance"],["기능 켜기·끄기","/service/controls"]]}
+const groups = [
+  { label: "상품 목록", href: "/", icon: Package },
+  {
+    label: "회원과 상담",
+    href: "/users",
+    icon: UsersRound,
+    children: [
+      ["회원 찾기", "/users"],
+      ["등급별 하루 기회", "/membership/grades"],
+      ["문의함", "/support"],
+      ["퍼뜩 AI 대화", "/conversations/ai"],
+    ],
+  },
+  {
+    label: "돈과 거래",
+    href: "/money/withdrawals",
+    icon: WalletCards,
+    children: [
+      ["입금 확인", "/money/deposits"],
+      ["출금 요청", "/money/withdrawals"],
+      ["전체 거래", "/money/transactions"],
+      ["맞지 않는 금액", "/money/mismatches"],
+    ],
+  },
+  { label: "본인 확인", href: "/identity", icon: UserRoundCheck },
+  {
+    label: "공지와 이벤트",
+    href: "/content/notices",
+    icon: Sparkles,
+    children: [
+      ["공지사항", "/content/notices"],
+      ["이벤트", "/content/events"],
+      ["혜택", "/content/benefits"],
+      ["배너", "/content/banners"],
+      ["알림 보내기", "/content/messages"],
+    ],
+  },
+  {
+    label: "안전 관리",
+    href: "/safety/alerts",
+    icon: ShieldCheck,
+    children: [
+      ["이상한 이용", "/safety/alerts"],
+      ["검토 사건", "/safety/cases"],
+      ["차단 목록", "/safety/lists"],
+      ["이용 한도", "/safety/limits"],
+    ],
+  },
+  { label: "운영 현황", href: "/reports", icon: Activity },
+  {
+    label: "직원과 기록",
+    href: "/staff",
+    icon: ClipboardCheck,
+    children: [
+      ["직원", "/staff"],
+      ["승인 요청", "/staff/approvals"],
+      ["작업 기록", "/activity"],
+      ["열람 기록", "/activity/access"],
+    ],
+  },
+  {
+    label: "서비스 설정",
+    href: "/service",
+    icon: Settings,
+    children: [
+      ["서비스 상태", "/service"],
+      ["화면 진행 시간", "/service/display-timing"],
+      ["진행 중인 문제", "/service/incidents"],
+      ["점검 일정", "/service/maintenance"],
+      ["기능 켜기·끄기", "/service/controls"],
+    ],
+  },
 ];
-const tasks=[
- ["W-24091","출금 요청","큰 금액 출금을 확인해주세요","김민준 · 1,250,000원","12분 전","red"],
- ["AI-8821","퍼뜩 AI","답변하지 못한 대화가 있어요","이서연 · 8번 주고받음","18분 전","amber"],
- ["K-1208","본인 확인","사진을 다시 확인해주세요","박지우 · 신분증 사진","31분 전","amber"],
- ["M-4502","금액 확인","기록된 금액과 24,000원 차이가 나요","최도윤 · 담당자 없음","48분 전","red"],
- ["N-0055","공지 승인","추석 연휴 운영 안내를 확인해주세요","콘텐츠팀 · 전체 회원","1시간 전","blue"]
-];
-const conversations=[
- ["AI-8821","이서연","출금 처리 시간이 궁금해요","오늘 신청한 출금은 언제 처리되나요?","오늘 13:42","확인 필요","amber"],
- ["AI-8818","김민준","거래 기회를 다시 설명해주세요","위험도 낮음은 정확히 어떤 뜻이에요?","오늘 12:18","정상","green"],
- ["AI-8812","박지우","본인 확인 사진 오류","사진을 올렸는데 다음으로 넘어가지 않아요.","오늘 11:07","답변 중단","red"],
- ["AI-8799","최도윤","입금 주소 확인","제가 보낸 주소가 맞는지 봐주세요. 010-****-4821","어제 21:36","민감정보 가림","blue"]
-];
-const memberDetails:Record<string,{name:string,status:string,kyc:string,balance:string,last:string,email:string,phone:string,joined:string,login:string,device:string,trades:string,ai:string,support:string,risk:string}>={
- "PD-10284":{name:"김민준",status:"이용 중",kyc:"확인 완료",balance:"1,852,400원",last:"오늘 오후 1:51",email:"minjun.k***@email.com",phone:"010-****-2841",joined:"2026.04.18",login:"오늘 13:51 · 서울",device:"Chrome · Windows",trades:"12건",ai:"24회",support:"2건",risk:"큰 금액 출금 확인 중"},
- "PD-10832":{name:"이서연",status:"이용 중",kyc:"확인 완료",balance:"742,100원",last:"오늘 오후 1:42",email:"seoyeon.l***@email.com",phone:"010-****-7318",joined:"2026.06.02",login:"오늘 13:42 · 부산",device:"Safari · iPhone",trades:"8건",ai:"31회",support:"1건",risk:"AI 답변 확인 필요"},
- "PD-10995":{name:"박지우",status:"확인 필요",kyc:"사진 재확인",balance:"86,500원",last:"오늘 오전 11:07",email:"jiwoo.p***@email.com",phone:"010-****-1905",joined:"2026.07.21",login:"오늘 11:07 · 인천",device:"Chrome · Android",trades:"3건",ai:"9회",support:"3건",risk:"신분증 사진 재확인"},
- "PD-10074":{name:"최도윤",status:"이용 제한",kyc:"확인 완료",balance:"2,104,800원",last:"어제 오후 9:36",email:"doyun.c***@email.com",phone:"010-****-4821",joined:"2026.02.09",login:"어제 21:36 · 대전",device:"Samsung Internet · Android",trades:"19건",ai:"17회",support:"2건",risk:"금액 차이 24,000원 확인 중"}
-};
-function Badge({tone="gray",children}:{tone?:Tone;children:React.ReactNode}){return <span className={`badge badge-${tone}`}>{children}</span>}
-function Stat({label,value,detail,tone="gray"}:{label:string;value:string;detail:string;tone?:Tone}){return <div className="stat"><span>{label}<i className={`dot dot-${tone}`}/></span><b>{value}</b><small>{detail}</small></div>}
-function SearchBox({value,setValue,placeholder}:{value:string;setValue:(v:string)=>void;placeholder:string}){return <label className="search"><Search/><input value={value} onChange={e=>setValue(e.target.value)} placeholder={placeholder}/><kbd>⌘ K</kbd></label>}
-function Table({heads,rows}:{heads:string[];rows:React.ReactNode[][]}){return <div className="table-wrap"><table><thead><tr>{heads.map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>)}</tbody></table></div>}
 
-export function AdminApp({route}:{route:string}){
- const [mobile,setMobile]=useState(false),[query,setQuery]=useState(""),[dialog,setDialog]=useState<null|{type:string,id:string}>(null),[toast,setToast]=useState(""),[filter,setFilter]=useState("전체"),[done,setDone]=useState<string[]>([]);
- const [authReady,setAuthReady]=useState(route==="/login");
- useEffect(()=>{if(route==="/login")return;if(sessionStorage.getItem("putduk_admin_demo")!=="1"){window.location.replace("/login");return}const readyTimer=setTimeout(()=>setAuthReady(true),0);return()=>clearTimeout(readyTimer)},[route]);
- const active=groups.find(g=>route===g.href||g.children?.some(([,h])=>route.startsWith(h)))||groups[0];
- const all=[...groups.flatMap(g=>[...(g.children||[]),[g.label,g.href]])];
- const title=(all.find(([,h])=>h===route)?.[0]||(route.startsWith("/users/")?"회원 상세":route.startsWith("/conversations/ai/")?"AI 대화 상세":"오늘 할 일")) as string;
- const notify=(s:string)=>{setToast(s);setTimeout(()=>setToast(""),2400)};
- if(route==="/login") return <LoginScreen/>;
- if(!authReady) return <main className="auth-loading">운영자 로그인 확인 중…</main>;
- return <div className="admin">
-  <aside className={`side ${mobile?"open":""}`}><div className="brand"><span>퍼</span><div><b>퍼뜩 관리</b><small>화면 체험용</small></div><button onClick={()=>setMobile(false)}><X/></button></div><nav>{groups.map(g=>{const I=g.icon,on=active.label===g.label;return <div key={g.label}><Link className={on?"on":""} href={g.href} onClick={e=>{e.preventDefault();setMobile(false);window.location.assign(g.href)}}><I/><span>{g.label}</span>{g.children&&<ChevronDown/>}</Link>{on&&g.children&&<div className="sub">{g.children.map(([l,h])=><Link key={h} className={route===h?"on":""} href={h} onClick={e=>{e.preventDefault();setMobile(false);window.location.assign(h)}}>{l}</Link>)}</div>}</div>})}</nav><div className="me"><span>김</span><div><b>김관리</b><small>전체 책임자</small></div><Link href="/login" aria-label="로그아웃" onClick={e=>{e.preventDefault();sessionStorage.removeItem("putduk_admin_demo");window.location.assign("/login")}}><LogOut/></Link></div></aside>
-  {mobile&&<button className="scrim" onClick={()=>setMobile(false)}/>}<main><header><button className="menub" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb"><span>퍼뜩 관리</span><ChevronRight/><b>{title}</b></div><div className="topright"><button className="bell"><Bell/><i>4</i></button><span className="healthy"><i/>모든 서비스 정상</span></div></header>
-  <div className="body"><div className="pagehead"><div><small>{active.label}</small><h1>{title}</h1><p>{description(route)}</p></div><button className="primary" onClick={()=>notify(action(route))}>{action(route)}</button></div>
-   {route==="/"&&<Dashboard done={done} open={setDialog}/>} {route==="/users"&&<Users q={query} setQ={setQuery}/>} {route.startsWith("/users/")&&<UserDetail id={decodeURIComponent(route.split("/").pop()||"")} open={setDialog} notify={notify}/>}
-   {route==="/conversations/ai"&&<Conversations q={query} setQ={setQuery} filter={filter} setFilter={setFilter} open={setDialog}/>} {route.startsWith("/conversations/ai/")&&<Conversation open={setDialog}/>} 
-   {route.startsWith("/money/")&&<Money route={route} open={setDialog}/>} {route==="/identity"&&<Identity/>} {route.startsWith("/content/")&&<Content route={route} open={setDialog}/>} 
-   {route.startsWith("/safety/")&&<Safety/>} {route==="/reports"&&<Reports/>} {route.startsWith("/support")&&<Support/>} {(route==="/staff"||route==="/staff/approvals")&&<Staff approval={route.includes("approvals")}/>} {route.startsWith("/activity")&&<History access={route.includes("access")}/>} {route.startsWith("/service")&&<Service open={setDialog}/>} 
-  </div></main>{dialog&&<Dialog data={dialog} close={()=>setDialog(null)} confirm={()=>{setDone([...done,dialog.id]);notify(dialog.type==="대화"?"열람 기록에 남겼어요.":"작업 기록에 반영했어요.");setDialog(null)}}/>}{toast&&<div className="toast"><Check/>{toast}</div>}
- </div>
-}
-function description(r:string){if(r==="/")return"지금 처리해야 할 일을 중요한 순서대로 모았어요.";if(r.includes("conversations"))return"회원과 퍼뜩 AI가 나눈 대화를 한 건씩 확인하고 후속 업무를 남길 수 있어요.";if(r.startsWith("/content"))return"내용을 만들고 미리 본 뒤 다른 직원의 확인을 받아 게시할 수 있어요.";if(r.startsWith("/money"))return"돈이 오간 과정과 확인이 필요한 요청을 한곳에서 살펴보세요.";return"필요한 정보를 빠르게 찾고 안전하게 처리할 수 있어요."}
-function action(r:string){if(r.includes("notices"))return"새 공지 만들기";if(r.includes("events"))return"새 이벤트 만들기";if(r.includes("conversations"))return"확인 필요한 대화";if(r==="/users")return"회원 찾기";if(r.startsWith("/service"))return"문제 알리기";return"내 할 일 새로고침"}
-
-function LoginScreen(){
- const [id,setId]=useState("admin@putduk.co.kr"),[pw,setPw]=useState("putduk2026"),[show,setShow]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
- const submit=(e:React.FormEvent)=>{e.preventDefault();if(!id.trim()||!pw.trim()){setError("아이디와 비밀번호를 모두 입력해주세요.");return}setBusy(true);setError("");sessionStorage.setItem("putduk_admin_demo","1");setTimeout(()=>{window.location.href="/"},650)};
- return <main className="login-page"><section className="login-brand"><div className="login-logo">퍼</div><p>PUTDUK OPERATIONS</p><h1>서비스의 모든 순간을<br/>안전하게 운영합니다.</h1><div className="login-points"><span><Check/> 중요한 업무를 한곳에서 확인</span><span><Check/> 위험한 작업은 한 번 더 확인</span><span><Check/> 모든 변경과 열람을 자동 기록</span></div><small>실제 데이터와 연결되지 않은 화면 체험용입니다.</small></section><section className="login-form-wrap"><form className="login-card" onSubmit={submit}><div className="login-mobile-logo"><span>퍼</span><b>퍼뜩 관리</b></div><p className="login-kicker">운영자 전용</p><h2>퍼뜩 관리에 로그인</h2><p className="login-help">운영 업무를 시작하려면 로그인해주세요.</p><label><span>아이디</span><input value={id} onChange={e=>setId(e.target.value)} autoComplete="username" placeholder="아이디를 입력해주세요"/></label><label><span>비밀번호</span><div className="password"><input value={pw} onChange={e=>setPw(e.target.value)} type={show?"text":"password"} autoComplete="current-password" placeholder="비밀번호를 입력해주세요"/><button type="button" onClick={()=>setShow(!show)} aria-label={show?"비밀번호 숨기기":"비밀번호 보기"}>{show?<EyeOff/>:<Eye/>}</button></div></label><div className="login-options"><label><input type="checkbox" defaultChecked/> 아이디 기억하기</label><button type="button">로그인에 도움이 필요해요</button></div>{error&&<p className="login-error"><AlertTriangle/>{error}</p>}<button className="login-submit" disabled={busy}>{busy?"안전하게 로그인하는 중…":"로그인"}</button><div className="demo-account"><b>체험용 계정이 입력되어 있어요.</b><p>그대로 로그인 버튼을 누르면 모든 관리 화면을 확인할 수 있습니다.</p></div></form></section></main>
+function returnToFrom(route: string): string {
+  if (typeof window === "undefined") return route === "/login" ? navHref("/") : navHref(route);
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return route === "/login" ? navHref("/") : navHref(route);
 }
 
-function Dashboard({done,open}:{done:string[];open:(d:{type:string,id:string})=>void}){return <><div className="stats"><Stat label="내가 맡은 일" value="7" detail="어제보다 2건 적어요" tone="blue"/><Stat label="담당자 없는 일" value="3" detail="가장 오래된 일 48분" tone="amber"/><Stat label="오늘 마감" value="5" detail="출금 확인 2건 포함" tone="red"/><Stat label="처리 완료" value="28" detail="오늘 오전부터" tone="green"/></div><section className="panel"><div className="panelhead"><div><h2>먼저 확인할 일</h2><p>중요도와 기다린 시간을 함께 봤어요.</p></div><div className="tabs"><button className="on">전체</button><button>내 일</button><button>담당자 없음</button></div></div><div className="tasklist">{tasks.map(t=><button key={t[0]} onClick={()=>open({type:t[1],id:t[0]})}><span className={`taskicon ${t[5]}`}>{t[1].includes("출금")?<CircleDollarSign/>:t[1].includes("AI")?<Bot/>:t[1].includes("공지")?<FileText/>:<AlertTriangle/>}</span><span className="taskcopy"><span><Badge tone={done.includes(t[0])?"green":t[5] as Tone}>{done.includes(t[0])?"처리 완료":t[1]}</Badge><small>{t[0]}</small></span><b>{t[2]}</b><small>{t[3]}</small></span><span className="tasktime"><b>{t[4]}</b><small>자세히 보기</small></span><ChevronRight/></button>)}</div></section><div className="twocol"><ServiceMini/><section className="panel mini"><div className="panelhead"><div><h2>다른 직원 확인 기다림</h2><p>중요 변경은 두 사람이 확인해요.</p></div></div><div className="approval"><ClipboardCheck/><div><b>추석 연휴 운영 안내</b><small>정하늘 님이 1시간 전에 요청</small></div><button>확인하기</button></div></section></div></>}
-function ServiceMini(){return <section className="panel mini"><div className="panelhead"><div><h2>서비스 상태</h2><p>최근 확인: 방금 전</p></div><Link href="/service">전체 보기</Link></div><div className="servicegrid">{["회원가입","로그인","입금","출금","거래","퍼뜩 AI"].map(x=><div key={x}><span>{x}</span><Badge tone="green">정상</Badge></div>)}</div></section>}
-function Users({q,setQ}:{q:string;setQ:(s:string)=>void}){const data=[["김민준","PD-10284","확인 완료","1,852,400원","오늘 13:51"],["이서연","PD-10832","확인 완료","742,100원","오늘 13:42"],["박지우","PD-10995","다시 확인","86,500원","오늘 11:07"],["최도윤","PD-10074","확인 완료","2,104,800원","어제 21:36"]].filter(r=>r.join("").includes(q));return <section className="panel"><div className="tools"><SearchBox value={q} setValue={setQ} placeholder="이름, 이메일, 휴대폰 번호 또는 회원 번호"/><button>상태 <ChevronDown/></button></div><Table heads={["회원","회원 번호","본인 확인","사용 가능 금액","마지막 이용",""]} rows={data.map(r=>[<Link className="person" href={`/users/${r[1]}`} key={r[1]}><span>{r[0][0]}</span><b>{r[0]}</b></Link>,r[1],<Badge key="b" tone={r[2].includes("다시")?"amber":"green"}>{r[2]}</Badge>,r[3],r[4],<Link className="textbtn" key="l" href={`/users/${r[1]}`}>자세히 보기</Link>])}/></section>}
-function UserDetail({id,open,notify}:{id:string;open:(d:{type:string,id:string})=>void;notify:(s:string)=>void}){
- const m=memberDetails[id]||memberDetails["PD-10284"],[tab,setTab]=useState("한눈에 보기"),[memo,setMemo]=useState(""),[savedMemo,setSavedMemo]=useState("출금 문의 답변 완료 · 처리 예상 시간을 안내했습니다.");
- const tabs=["한눈에 보기","가입과 로그인","돈과 거래","퍼뜩 AI 대화","문의와 답변","관리 기록"];
- return <><section className="profile"><span className="bigavatar">{m.name[0]}</span><div><span className="inline"><h2>{m.name}</h2><Badge tone={m.status==="이용 중"?"green":m.status.includes("제한")?"red":"amber"}>{m.status}</Badge><Badge tone={m.kyc==="확인 완료"?"green":"amber"}>본인 확인 {m.kyc}</Badge></span><p>회원 번호 {id} · 마지막 이용 {m.last}</p></div><div className="profile-actions"><button onClick={()=>open({type:"개인정보 열람",id})}><LockKeyhole/> 개인정보 보기</button><button onClick={()=>open({type:m.status.includes("제한")?"이용 제한 해제":"이용 제한",id})}><ShieldCheck/> {m.status.includes("제한")?"제한 풀기":"이용 제한"}</button></div></section><div className="profiletabs" role="tablist">{tabs.map(x=><button role="tab" aria-selected={tab===x} className={tab===x?"on":""} key={x} onClick={()=>setTab(x)}>{x}</button>)}</div>
- {tab==="한눈에 보기"&&<><div className="stats"><Stat label="사용 가능 금액" value={m.balance} detail="화면 체험용"/><Stat label="최근 30일 거래" value={m.trades} detail="완료·확인 중 포함"/><Stat label="AI 대화" value={m.ai} detail={m.risk} tone="amber"/><Stat label="문의" value={m.support} detail="접수된 전체 문의" tone="green"/></div><div className="twocol"><section className="panel"><div className="panelhead"><h2>최근 활동</h2></div><Timeline/></section><MemoPanel memo={memo} setMemo={setMemo} savedMemo={savedMemo} save={()=>{if(!memo.trim()){notify("메모 내용을 입력해주세요.");return}setSavedMemo(memo);setMemo("");notify("직원 메모를 저장했어요.")}}/></div></>}
- {tab==="가입과 로그인"&&<section className="panel detail-section"><div className="panelhead"><div><h2>가입 정보와 최근 로그인</h2><p>개인정보는 업무상 필요한 경우에만 열어보세요.</p></div><button onClick={()=>open({type:"모든 기기 로그아웃",id})}>모든 기기 로그아웃</button></div><dl className="detail-grid"><dt>가입일</dt><dd>{m.joined}</dd><dt>이메일</dt><dd>{m.email}</dd><dt>휴대폰</dt><dd>{m.phone}</dd><dt>최근 로그인</dt><dd>{m.login}</dd><dt>최근 기기</dt><dd>{m.device}</dd><dt>로그인 상태</dt><dd><Badge tone="green">정상</Badge></dd></dl><Table heads={["시간","지역","기기","결과"]} rows={[[m.login.split(" · ")[0],m.login.split(" · ")[1],m.device,<Badge key="ok" tone="green">성공</Badge>],["어제 18:24","대한민국",m.device,<Badge key="ok2" tone="green">성공</Badge>],["09.07 03:12","알 수 없는 지역","새 기기",<Badge key="no" tone="red">차단</Badge>]]}/></section>}
- {tab==="돈과 거래"&&<section className="panel detail-section"><div className="panelhead"><div><h2>돈과 거래</h2><p>입금부터 출금까지 처리 과정을 확인하세요.</p></div><button onClick={()=>open({type:"거래 검토",id})}>거래 검토 요청</button></div><div className="money-summary"><div><span>사용 가능</span><b>{m.balance}</b></div><div><span>출금 확인 중</span><b>{id==="PD-10284"?"1,250,000원":"0원"}</b></div><div><span>최근 30일</span><b>{m.trades}</b></div></div><Table heads={["거래 번호","종류","금액","시간","상태"]} rows={[[`TX-${id.slice(-4)}-03`,"출금",id==="PD-10284"?"1,250,000원":"320,000원","오늘 13:39",<Badge key="a" tone="amber">확인 중</Badge>],[`TX-${id.slice(-4)}-02`,"입금","500,000원","어제 17:20",<Badge key="b" tone="green">완료</Badge>],[`TX-${id.slice(-4)}-01`,"거래","182,000원","09.07 11:05",<Badge key="c" tone="green">완료</Badge>]]}/></section>}
- {tab==="퍼뜩 AI 대화"&&<section className="panel detail-section"><div className="panelhead"><div><h2>{m.name} 님의 퍼뜩 AI 대화</h2><p>대화를 선택하면 전체 내용을 한 건씩 열람할 수 있어요.</p></div><Badge tone="amber">열람 기록 자동 저장</Badge></div><div className="member-ai-list">{[[`AI-${id.slice(-4)}1`,"출금 처리 시간이 궁금해요","오늘 13:42","확인 필요"],[`AI-${id.slice(-4)}2`,"거래 기회를 다시 설명해주세요","어제 19:08","정상"],[`AI-${id.slice(-4)}3`,"입금 주소를 확인해주세요","09.07 14:26","정상"]].map((c,i)=><div key={c[0]}><Bot/><div><b>{c[1]}</b><small>{c[0]} · {c[2]}</small></div><Badge tone={i===0?"amber":"green"}>{c[3]}</Badge><Link href={`/conversations/ai/${c[0]}`}>대화 열기</Link></div>)}</div></section>}
- {tab==="문의와 답변"&&<section className="panel detail-section"><div className="panelhead"><div><h2>문의와 답변</h2><p>회원이 남긴 문의와 운영자의 답변을 확인하세요.</p></div><button onClick={()=>notify("새 답변 작성창을 열었어요.")}>새 답변 작성</button></div><Table heads={["문의 제목","접수 시간","상태","담당자","답변"]} rows={[["출금 처리 시간을 알고 싶어요","오늘 13:31",<Badge key="a" tone="amber">답변 기다림</Badge>,"담당자 없음",<button key="aa" className="textbtn" onClick={()=>notify("답변 작성창을 열었어요.")}>답변하기</button>],["본인 확인이 완료됐나요?","09.06 16:22",<Badge key="b" tone="green">답변 완료</Badge>,"정하늘",<button key="bb" className="textbtn" onClick={()=>notify("답변 내용을 열었어요.")}>내용 보기</button>]]}/></section>}
- {tab==="관리 기록"&&<section className="panel detail-section"><div className="panelhead"><div><h2>이 회원의 관리 기록</h2><p>누가 무엇을 확인하거나 변경했는지 시간순으로 보여줘요.</p></div><button onClick={()=>notify("관리 기록을 내려받을 준비를 했어요.")}>기록 내려받기</button></div><Timeline access/></section>}
- </>
+function loginHref(route: string): string {
+  const next = route === "/login" ? "/" : route;
+  const origin = resolveOrigin();
+  const qa = origin.mode === "isolated-qa" ? "&isolatedQa=1" : "";
+  return `${navHref("/login")}?next=${encodeURIComponent(navHref(next))}${qa}`;
 }
-function MemoPanel({memo,setMemo,savedMemo,save}:{memo:string;setMemo:(s:string)=>void;savedMemo:string;save:()=>void}){return <section className="panel"><div className="panelhead"><div><h2>직원 메모</h2><p>회원에게는 보이지 않아요.</p></div></div><div className="note"><b>최근 메모</b><p>{savedMemo}</p><small>김관리 · 방금 전</small></div><div className="memo-compose"><textarea value={memo} onChange={e=>setMemo(e.target.value)} placeholder="다른 직원이 알아야 할 내용을 적어주세요."/><button onClick={save}>메모 저장</button></div></section>}
-function Conversations({q,setQ,filter,setFilter,open}:{q:string;setQ:(s:string)=>void;filter:string;setFilter:(s:string)=>void;open:(d:{type:string,id:string})=>void}){const rows=useMemo(()=>conversations.filter(c=>(filter==="전체"||c[5]===filter)&&c.join("").includes(q)),[q,filter]);return <><div className="stats"><Stat label="오늘 대화" value="384" detail="어제보다 8% 많아요"/><Stat label="답하지 못함" value="7" detail="직접 확인해주세요" tone="red"/><Stat label="확인 필요" value="18" detail="담당자 없는 대화 4개" tone="amber"/><Stat label="평균 답변 시간" value="1.8초" detail="최근 1시간" tone="green"/></div><section className="panel"><div className="tools"><SearchBox value={q} setValue={setQ} placeholder="회원, 대화 번호 또는 대화 속 단어"/><div className="pills">{["전체","확인 필요","답변 중단"].map(x=><button className={filter===x?"on":""} key={x} onClick={()=>setFilter(x)}>{x}</button>)}</div></div><div className="convolist">{rows.map(c=><div key={c[0]}><span className="avatar">{c[1][0]}</span><div><span className="inline"><b>{c[1]}</b><small>{c[0]}</small><Badge tone={c[6] as Tone}>{c[5]}</Badge></span><Link href={`/conversations/ai/${c[0]}`}>{c[2]}</Link><p>{c[3]}</p></div><div className="convmeta"><b>{c[4]}</b><small>8번 주고받음</small><button onClick={()=>open({type:"대화",id:c[0]})}>대화 열기</button></div></div>)}</div></section></>}
-function Conversation({open}:{open:(d:{type:string,id:string})=>void}){return <div className="chatlayout"><section className="panel chat"><div className="chathead"><div><span className="inline"><h2>출금 처리 시간이 궁금해요</h2><Badge tone="amber">확인 필요</Badge></span><p>이서연 · AI-8821 · 오늘 13:42 시작</p></div><button onClick={()=>open({type:"대화",id:"AI-8821"})}>확인 완료로 표시</button></div><div className="messages"><div className="message user"><small>이서연 · 13:42</small><p>오늘 신청한 출금은 언제 처리되나요?</p></div><div className="message bot"><small><Bot/> 퍼뜩 AI · 13:42</small><p>출금 요청은 순서대로 확인하고 있어요. 정확한 예상 시간은 현재 요청 상태를 확인한 뒤 안내해 드릴게요.</p></div><div className="message user"><small>이서연 · 13:43</small><p>금액이 큰데 오늘 안에 꼭 받을 수 있나요?</p></div><div className="systemmsg"><AlertTriangle/><div><b>AI가 답변을 멈췄어요.</b><p>확정되지 않은 처리 시간을 약속하지 않도록 사람 확인이 필요합니다.</p></div></div></div><div className="composer"><textarea placeholder="회원에게 보내지 않는 내부 메모"/><button>메모 저장</button></div></section><aside className="panel context"><h2>대화 정보</h2><dl><dt>회원</dt><dd><Link href="/users/PD-10832">이서연 · PD-10832</Link></dd><dt>시작 시간</dt><dd>오늘 13:42</dd><dt>답변 방식</dt><dd>퍼뜩 기본 답변 v3</dd><dt>사용 기기</dt><dd>모바일 · 한국어</dd><dt>담당자</dt><dd>아직 없음</dd></dl><button className="primary wide">내가 맡기</button><button className="wide">검토 사건 만들기</button><div className="access"><LockKeyhole/><p><b>열람 기록을 남겼어요.</b><br/>대화를 연 사람과 시간이 기록됩니다.</p></div></aside></div>}
-function Money({route,open}:{route:string;open:(d:{type:string,id:string})=>void}){const mismatch=route.includes("mismatches"),rows=mismatch?[["M-4502","최도윤","520,000원","496,000원","24,000원","확인 필요"],["M-4487","김서준","178,000원","178,000원","0원","처리 완료"]]:[["W-24091","김민준","1,250,000원","오늘 13:39","다른 직원 확인","큰 금액"],["W-24088","이서연","320,000원","오늘 13:21","확인 중","정상"],["W-24072","박지우","86,500원","오늘 11:02","정보 확인","확인 필요"],["W-24061","최도윤","540,000원","오늘 09:48","처리 완료","정상"]];return <><div className="stats"><Stat label="확인 기다림" value="12건" detail="큰 금액 2건 포함" tone="amber"/><Stat label="오늘 요청 금액" value="8,420,000원" detail="화면 체험용"/><Stat label="평균 처리 시간" value="18분" detail="최근 7일보다 3분 빨라요" tone="green"/><Stat label="오래 멈춘 요청" value="2건" detail="직접 확인해주세요" tone="red"/></div><section className="panel"><div className="tools"><SearchBox value="" setValue={()=>{}} placeholder="회원, 거래 번호 또는 금액"/><button>처리 상태 <ChevronDown/></button></div><Table heads={mismatch?["번호","회원","기대 금액","확인 금액","차이","상태"]:["요청 번호","회원","금액","신청 시간","상태","확인"]} rows={rows.map(r=>r.map((x,i)=>i===0?<button className="textbtn" key={i} onClick={()=>open({type:"출금 요청",id:x})}>{x}</button>:i===r.length-1?<Badge key={i} tone={x.includes("완료")||x==="정상"?"green":x.includes("큰")?"red":"amber"}>{x}</Badge>:x))}/></section></>}
-function Identity(){return <section className="panel"><div className="queue"><div><b>8</b><span>확인 기다림</span></div><div><b>3</b><span>다시 확인 필요</span></div><div><b>42</b><span>오늘 확인 완료</span></div></div><Table heads={["회원","신청 시간","확인할 내용","현재 상태","담당자"]} rows={[["박지우","오늘 11:02","신분증 사진","다시 확인 필요","최은비"],["김서준","오늘 10:46","얼굴 사진","확인 중","나"],["정수빈","오늘 10:18","주소 정보","확인 기다림","담당자 없음"]]}/></section>}
-function Content({route,open}:{route:string;open:(d:{type:string,id:string})=>void}){const rows=[["추석 연휴 운영 안내","확인 기다림","2026.09.12 09:00","전체 회원"],["첫 거래 완료 감사 이벤트","게시 중","2026.09.08 10:00","신규 회원"],["서비스 점검 안내","예약됨","2026.09.10 02:00","전체 회원"],["친구 초대 추가 혜택","작성 중","아직 정하지 않음","초대 회원"]];return <><div className="steps"><div className="on"><span>1</span><b>내용 작성</b></div><i/><div><span>2</span><b>미리 보기</b></div><i/><div><span>3</span><b>다른 직원 확인</b></div><i/><div><span>4</span><b>게시 또는 예약</b></div></div><section className="panel"><div className="panelhead"><div><h2>전체 {route.includes("events")?"이벤트":"공지사항"}</h2><p>작성 중인 내용과 게시 일정을 함께 확인하세요.</p></div><div className="tabs"><button className="on">전체</button><button>작성 중</button><button>예약됨</button></div></div><Table heads={["제목","상태","게시 시간","보여줄 회원",""]} rows={rows.map((r,i)=>[r[0],<Badge key="b" tone={r[1]==="게시 중"?"green":r[1]==="예약됨"?"blue":"amber"}>{r[1]}</Badge>,r[2],r[3],<button className="textbtn" key="a" onClick={()=>open({type:"공지 승인",id:`N-${i}`})}>관리하기</button>])}/></section></>}
-function Safety(){return <><div className="safety"><ShieldCheck/><div><b>자동 알림은 결론이 아니에요.</b><p>평소와 다른 점을 알려드리는 것이므로, 관련 정보를 직접 확인한 뒤 결정해주세요.</p></div></div><section className="panel"><Table heads={["확인이 필요한 이유","회원","관련 내용","발견 시간","담당자","중요도"]} rows={[["짧은 시간에 출금을 여러 번 요청했어요","최도윤","출금 4회","오늘 13:28","담당자 없음",<Badge key="r" tone="red">높음</Badge>],["평소보다 큰 금액을 요청했어요","김민준","1,250,000원","오늘 13:39","나",<Badge key="a" tone="amber">보통</Badge>],["여러 계정에서 같은 기기를 사용했어요","김서준 외 2명","같은 기기","오늘 12:11","최은비",<Badge key="b" tone="amber">보통</Badge>]]}/></section></>}
-function Reports(){return <><div className="stats"><Stat label="오늘 새 회원" value="128명" detail="어제보다 12% 많아요" tone="green"/><Stat label="돈 처리 완료" value="94.8%" detail="확인 중 17건" tone="green"/><Stat label="AI 답변 성공" value="98.2%" detail="답하지 못함 7회" tone="amber"/><Stat label="문의 첫 답변" value="6분" detail="목표보다 4분 빨라요" tone="green"/></div><div className="twocol"><section className="panel"><div className="panelhead"><h2>최근 7일 주요 업무량</h2><Badge tone="blue">화면 체험용</Badge></div><div className="bars">{[48,62,55,78,69,86,74].map((h,i)=><div key={i}><span style={{height:`${h}%`}}/><small>{["목","금","토","일","월","화","수"][i]}</small></div>)}</div></section><section className="panel"><div className="panelhead"><h2>지금 살펴볼 변화</h2></div><div className="insight"><AlertTriangle/><div><b>AI 출금 문의가 늘었어요.</b><p>어제보다 34% 많습니다.</p><Link href="/conversations/ai">관련 대화 보기</Link></div></div><div className="insight"><UserRoundCheck/><div><b>본인 확인 대기 시간이 길어졌어요.</b><p>오전 11시 이후 평균 8분 증가했습니다.</p><Link href="/identity">대기 목록 보기</Link></div></div></section></div></>}
-function Support(){return <section className="panel"><div className="panelhead"><h2>문의 대기함</h2><div className="tabs"><button className="on">전체</button><button>내 문의</button><button>담당자 없음</button></div></div><Table heads={["문의","회원","기다린 시간","상태","담당자"]} rows={[["출금 처리 시간을 알고 싶어요","이서연","18분","답변 기다림","담당자 없음"],["입금 주소를 확인해주세요","최도윤","31분","확인 중","정하늘"],["이벤트 참여 여부가 궁금해요","김민준","42분","답변 작성 중","나"]]}/></section>}
-function Staff({approval}:{approval:boolean}){return <section className="panel"><Table heads={approval?["요청한 일","요청자","요청 시간","영향","상태"]:["직원","담당 역할","현재 상태","마지막 활동","할 수 있는 일"]} rows={approval?[["추석 연휴 공지 게시","정하늘","오늘 12:48","전체 회원","확인 기다림"],["큰 금액 출금 승인","김관리","오늘 13:41","김민준 · 1,250,000원","내가 요청하여 승인 불가"]]:[["김관리","전체 책임자","근무 중","방금 전","모든 업무"],["정하늘","회원 상담 담당","근무 중","3분 전","회원·문의·AI 대화"],["최은비","본인 확인 담당","자리 비움","18분 전","본인 확인"]]}/></section>}
-function History({access}:{access:boolean}){return <section className="panel"><div className="panelhead"><h2>{access?"민감한 정보를 본 기록":"오늘의 작업 기록"}</h2><button>날짜와 직원 <ChevronDown/></button></div><Timeline access={access}/></section>}
-function Timeline({access=false}:{access?:boolean}){const a=access?["김관리 님이 이서연 회원의 AI 대화를 확인했어요.","최은비 님이 박지우 회원의 본인 확인 사진을 확인했어요.","정하늘 님이 김민준 회원의 휴대폰 번호를 확인했어요."]:["김관리 님이 1,250,000원 출금 확인을 요청했어요.","정하늘 님이 추석 연휴 운영 안내의 게시 승인을 요청했어요.","최은비 님이 박지우 회원에게 사진 재확인을 요청했어요."];return <div className="timeline">{a.map((x,i)=><div key={x}><span><Check/></span><div><b>{x}</b><small>오늘 {13-i}:4{i} · 이유: 업무 확인</small></div></div>)}</div>}
-function Service({open}:{open:(d:{type:string,id:string})=>void}){return <><div className="servicehero"><div><span className="pulse"><i/></span><div><b>현재 모든 서비스가 정상이에요.</b><p>마지막 확인: 방금 전</p></div></div><button>지난 문제 보기</button></div><section className="panel"><div className="servicelist">{["회원가입","로그인","입금 받기","출금 처리","새 거래 시작","퍼뜩 AI","알림 보내기","관리자 화면"].map((x,i)=><div key={x}><span className="taskicon green">{i===5?<Bot/>:<Check/>}</span><div><b>{x}</b><small>최근 24시간 문제 없음</small></div><Badge tone="green">사용 중</Badge><button onClick={()=>open({type:"기능 중지",id:x})}>관리하기</button></div>)}</div></section></>}
-function Dialog({data,close,confirm}:{data:{type:string,id:string};close:()=>void;confirm:()=>void}){const danger=data.type.includes("중지")||data.type.includes("출금");return <div className="backdrop" onMouseDown={close}><div className="dialog" role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><span className={`dialogicon ${danger?"danger":""}`}>{data.type==="대화"?<MessageSquareText/>:danger?<AlertTriangle/>:<ClipboardCheck/>}</span><h2>{data.type==="대화"?"이 대화를 확인할까요?":`${data.type}을 처리할까요?`}</h2><p>{data.type==="대화"?"업무에 필요한 경우에만 확인해주세요. 누가 언제 확인했는지 기록됩니다.":"무엇이 바뀌는지 다시 확인해주세요. 이 작업은 기록에 남습니다."}</p><div className="summary"><span>대상</span><b>{data.id}</b><span>처리하는 사람</span><b>김관리</b><span>기록</span><b>자동으로 남김</b></div>{data.type==="대화"&&<label><span>확인하는 이유</span><select><option>업무 확인</option><option>회원 문의 처리</option><option>AI 답변 품질 확인</option></select></label>}<div className="dialogactions"><button onClick={close}>다시 확인</button><button className={danger?"dangerbtn":"primary"} onClick={confirm}>{data.type==="대화"?"대화 보기":"처리하기"}</button></div></div></div>}
+
+function useAppRoute(initialRoute: string): string {
+  const [pop, setPop] = useState(0);
+  useEffect(() => {
+    const onPop = () => setPop((n) => n + 1);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  if (typeof window !== "undefined" && pop > 0) {
+    return appPath(window.location.pathname || initialRoute);
+  }
+  return appPath(initialRoute);
+}
+
+function subscribeNoop() {
+  return () => {};
+}
+
+export function AdminApp({ route: initialRoute }: { route: string }) {
+  const booted = useSyncExternalStore(subscribeNoop, () => true, () => false);
+  const origin = resolveOrigin();
+  const adapter = useMemo(() => (booted ? createAdminAdapter() : null), [booted]);
+  const route = useAppRoute(initialRoute);
+  const [mobile, setMobile] = useState(false);
+  const [query, setQuery] = useState("");
+  const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
+  const [filter, setFilter] = useState("전체");
+  const [authReady, setAuthReady] = useState(false);
+  const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
+
+  useEffect(() => {
+    if (!adapter) return;
+    let alive = true;
+    void adapter.session().then((res) => {
+      if (!alive) return;
+      if (res.ok) setSession(res.data);
+      else setSession({ connected: false, mode: origin.mode });
+      setAuthReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [adapter, origin.mode, route]);
+
+  const notify = (s: string, ok = true) => {
+    setToast({ message: s, ok });
+    window.setTimeout(() => setToast(null), 2600);
+  };
+
+  const go = (href: string) => {
+    setMobile(false);
+    window.location.assign(navHref(href));
+  };
+
+  if (!booted || !adapter) return <main className="auth-loading">운영자 로그인 확인 중…</main>;
+
+  if (route === "/login") {
+    return (
+      <LoginScreen
+        adapter={adapter}
+        returnTo={returnToFrom(route)}
+        onAuthed={() => setAuthReady(true)}
+      />
+    );
+  }
+  if (!authReady) return <main className="auth-loading">운영자 로그인 확인 중…</main>;
+  if (!session.connected) {
+    if (typeof window !== "undefined") window.location.replace(loginHref(route));
+    return <main className="auth-loading">로그인 화면으로 이동 중…</main>;
+  }
+
+  const known = isKnownRoute(route);
+  const active =
+    groups.find((g) => route === g.href || g.children?.some(([, h]) => route === h || (h !== "/" && route.startsWith(`${h}/`)))) ||
+    (known ? groups[0] : { label: "없는 화면", href: route, icon: LayoutDashboard });
+  const all = [...groups.flatMap((g) => [...(g.children || []), [g.label, g.href]])];
+  const title = (all.find(([, h]) => h === route)?.[0] ||
+    (route.startsWith("/users/")
+      ? "회원 기회·등급"
+      : route.startsWith("/conversations/ai/")
+        ? "AI 대화 상세"
+        : route === "/catalog"
+          ? "상품 목록"
+          : known
+            ? "상품 목록"
+            : "없는 화면")) as string;
+  const who = sessionLabel(session);
+  const userId = route.startsWith("/users/") ? decodeURIComponent(route.split("/").pop() || "") : "";
+
+  return (
+    <div className="admin">
+      <aside className={`side ${mobile ? "open" : ""}`}>
+        <div className="brand">
+          <span>퍼</span>
+          <div>
+            <b>{COPY.brand}</b>
+            <small>{brandModeLabel(origin)}</small>
+          </div>
+          <button type="button" onClick={() => setMobile(false)}>
+            <X />
+          </button>
+        </div>
+        <nav>
+          {groups.map((g) => {
+            const I = g.icon;
+            const on = active.label === g.label;
+            return (
+              <div key={g.label}>
+                <Link
+                  className={on ? "on" : ""}
+                  href={navHref(g.href)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    go(g.href);
+                  }}
+                >
+                  <I />
+                  <span>{g.label}</span>
+                  {g.children ? <ChevronDown /> : null}
+                </Link>
+                {on && g.children ? (
+                  <div className="sub">
+                    {g.children.map(([l, h]) => (
+                      <Link
+                        key={h}
+                        className={route === h ? "on" : ""}
+                        href={navHref(h)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          go(h);
+                        }}
+                      >
+                        {l}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </nav>
+        <div className="me">
+          <span>{who.name[0] ?? "운"}</span>
+          <div>
+            <b>{who.name}</b>
+            <small>{who.role}</small>
+          </div>
+          <Link
+            href={navHref("/login")}
+            aria-label="로그아웃"
+            data-testid="logout"
+            onClick={(e) => {
+              e.preventDefault();
+              void adapter.logout().then(() => {
+                rememberIsolatedQa(false);
+                window.location.assign(navHref("/login"));
+              });
+            }}
+          >
+            <LogOut />
+          </Link>
+        </div>
+      </aside>
+      {mobile ? <button className="scrim" type="button" onClick={() => setMobile(false)} /> : null}
+      <main>
+        <header>
+          <button className="menub" type="button" onClick={() => setMobile(true)}>
+            <Menu />
+          </button>
+          <div className="crumb">
+            <span>{COPY.brand}</span>
+            <b>{title}</b>
+          </div>
+          <div className="topright">
+            {origin.mode === "isolated-qa" && adapter.setStoreReady ? (
+              <button
+                type="button"
+                className="ops-mini"
+                data-testid="qa-store-ready"
+                onClick={() => {
+                  adapter.setStoreReady?.(true);
+                  notify("격리 저장소를 준비됨으로 바꿨어요. 실제 운영 DB가 아닙니다.");
+                }}
+              >
+                시험 저장소 준비
+              </button>
+            ) : null}
+            <span className={`healthy ${healthTone(origin, session)}`} data-testid="header-health">
+              <i />
+              {healthCaption(origin, session)}
+            </span>
+          </div>
+        </header>
+        <div className="body">
+          {origin.mode === "isolated-qa" ? <QaBanner>{COPY.isolatedHint}</QaBanner> : null}
+          {origin.mode === "waiting" ? <WaitBanner>{origin.reason}</WaitBanner> : null}
+          <div className="pagehead">
+            <div>
+              <small>{active.label}</small>
+              <h1 data-testid="page-title">{title}</h1>
+              <p>{description(route)}</p>
+            </div>
+          </div>
+          {route === "/" || route === "/catalog" ? <CatalogScreen adapter={adapter} notify={notify} /> : null}
+          {route === "/users" ? <UsersSearch adapter={adapter} /> : null}
+          {route.startsWith("/users/") ? (
+            <>
+              <MembershipWorkspace key={userId} userId={userId} adapter={adapter} notify={notify} />
+              <DraftUserExtras />
+            </>
+          ) : null}
+          {route === "/membership/grades" ? <GradesScreen adapter={adapter} notify={notify} /> : null}
+          {route === "/conversations/ai" ? (
+            <Conversations q={query} setQ={setQuery} filter={filter} setFilter={setFilter} />
+          ) : null}
+          {route.startsWith("/conversations/ai/") ? <Conversation /> : null}
+          {route.startsWith("/money/") ? <Money /> : null}
+          {route === "/identity" ? <Identity /> : null}
+          {route.startsWith("/content/") ? <Content route={route} /> : null}
+          {route.startsWith("/safety/") ? <Safety /> : null}
+          {route === "/reports" ? <Reports /> : null}
+          {route.startsWith("/support") ? <Support /> : null}
+          {route === "/staff" || route === "/staff/approvals" ? <Staff approval={route.includes("approvals")} /> : null}
+          {route.startsWith("/activity") ? <History access={route.includes("access")} /> : null}
+          {route === "/service/display-timing" ? <PresentationScreen adapter={adapter} notify={notify} /> : null}
+          {route.startsWith("/service") && route !== "/service/display-timing" ? <Service /> : null}
+          {!known ? (
+            <section className="panel" data-testid="missing-route">
+              <div className="panelhead">
+                <div>
+                  <h2>없는 화면</h2>
+                  <p>{COPY.missingRoute}</p>
+                </div>
+              </div>
+              <p className="ops-hint">주소 {route}</p>
+            </section>
+          ) : null}
+        </div>
+      </main>
+      {toast ? (
+        <div className={`toast ${toast.ok ? "toast-ok" : "toast-fail"}`} data-testid="admin-toast" data-ok={toast.ok ? "true" : "false"}>
+          {toast.ok ? <Check /> : <AlertTriangle />}
+          {toast.message}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function description(r: string) {
+  if (!isKnownRoute(r)) return COPY.missingRoute;
+  if (r === "/" || r === "/catalog") return COPY.catalogS2;
+  if (r === "/users") return "정확한 회원 번호로만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.";
+  if (r.startsWith("/users/")) return "하루 기본 기회, 추가 지급, 미사용 회수, 수동 등급을 서버 응답으로만 다룹니다.";
+  if (r === "/membership/grades") return "등급별 하루 기본 기회입니다. 기존 회원을 5회로 덮지 않아요.";
+  if (r === "/service/display-timing") return "웹 화면 진행 시간만 바꿉니다. 실행 정책 5단계와는 다른 설정이에요.";
+  if (r.includes("conversations")) return "권한 있는 대화 조회 계약이 확인되기 전에는 내용을 열지 않아요.";
+  if (r.startsWith("/content")) return "게시 완료로 꾸미지 않아요.";
+  if (r.startsWith("/money")) return "실제 금융 쓰기는 열지 않았어요.";
+  return "필요한 정보를 찾은 뒤에만 바꾸고, 서버가 확인한 결과만 완료로 봅니다.";
+}
+
+const KNOWN_EXACT = new Set([
+  "/",
+  "/users",
+  "/catalog",
+  "/membership/grades",
+  "/support",
+  "/conversations/ai",
+  "/identity",
+  "/reports",
+  "/staff",
+  "/staff/approvals",
+  "/activity",
+  "/activity/access",
+  "/service",
+  "/service/display-timing",
+  "/service/incidents",
+  "/service/maintenance",
+  "/service/controls",
+]);
+
+const KNOWN_PREFIX = ["/users/", "/conversations/ai/", "/money/", "/content/", "/safety/"];
+
+export function isKnownRoute(route: string): boolean {
+  if (KNOWN_EXACT.has(route)) return true;
+  return KNOWN_PREFIX.some((prefix) => route.startsWith(prefix) && route.length > prefix.length);
+}
+
+function brandModeLabel(origin: OriginDecision): string {
+  if (origin.mode === "isolated-qa") return "격리 시험";
+  if (origin.mode === "waiting") return "연결 대기";
+  return "운영 연결";
+}
+
+function healthCaption(origin: OriginDecision, session: AdminSession): string {
+  if (origin.mode === "isolated-qa") return "격리 시험 중";
+  if (origin.mode === "waiting") return "연결 대기";
+  if (origin.mode === "live" && session.connected) {
+    return origin.sameOrigin ? "운영 세션 연결됨" : "운영 세션·다른 주소 확인 필요";
+  }
+  return "운영 연결 확인 필요";
+}
+
+function healthTone(origin: OriginDecision, session: AdminSession): string {
+  if (origin.mode === "isolated-qa") return "healthy-qa";
+  if (origin.mode === "waiting") return "healthy-wait";
+  if (origin.mode === "live" && session.connected && origin.sameOrigin) return "healthy-live";
+  return "healthy-need";
+}
