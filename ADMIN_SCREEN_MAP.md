@@ -2,8 +2,9 @@
 
 | 주소 | 화면명 |
 |---|---|
-| `/login` | 운영자 로그인(프로토타입용) |
+| `/login` | 운영자 스태프 로그인 |
 | `/` | 오늘 할 일 |
+| `/products`, `/products/new`, `/products/[id]` | 운영 상품 목록·등록·상세 |
 | `/users`, `/users/[id]` | 회원 찾기·상세 |
 | `/support` | 문의함 |
 | `/conversations/ai`, `/conversations/ai/[id]` | 퍼뜩 AI 대화 |
