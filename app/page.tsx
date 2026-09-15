@@ -1,2 +1,5 @@
-import { AdminApp } from "./admin-app";
-export default function Home(){return <AdminApp route="/"/>}
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  redirect("/admin");
+}

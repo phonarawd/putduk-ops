@@ -396,7 +396,8 @@ assert.equal(netHttp.ok, false);
 if (!netHttp.ok) assert.equal(netHttp.code, "CONNECTION_WAITING");
 pass("http 401/403/404/409/503/network mapped without fake success");
 
-assert.equal(PRODUCT_LIST_GET_EXISTS, false);
+assert.equal(PRODUCT_LIST_GET_EXISTS, true);
+assert.equal(CURRENT_CONTRACT_PATHS.operatorProductsList.includes("GET /api/v1/admin/opportunities/operator-products"), true);
 assert.equal(PRODUCT_GET_BY_ID_EXISTS, false);
 assert.equal(PRODUCT_REVISION_CONFLICT_IN_CORE, false);
 assert.equal(BACKEND_MANIFEST_READ.gitHead !== BACKEND_MANIFEST_READ.manifestEmbeddedHead, true);
@@ -413,6 +414,16 @@ pass("server resellerId or clear unissued");
 
 assert.equal(created.ok, true);
 if (created.ok) {
+  const listedProducts = readyStore.listProducts();
+  assert.equal(listedProducts.ok, true);
+  if (listedProducts.ok) {
+    assert.equal(listedProducts.data.items.some((row) => row.id === created.data.product.id), true);
+  }
+  const emptyListStore = createIsolatedStore();
+  emptyListStore.login("qa-super");
+  const emptyListed = emptyListStore.listProducts();
+  assert.equal(emptyListed.ok, true);
+  if (emptyListed.ok) assert.equal(emptyListed.data.items.length, 0);
   const missingList = readyStore.listParticipations("55555555-5555-4555-8555-555555555555");
   assert.equal(missingList.ok, false);
   if (!missingList.ok) assert.equal(missingList.code, "NOT_FOUND");

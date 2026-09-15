@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { COPY } from "../../lib/admin/copy";
 import { MEMBERSHIP_IDS, MEMBERSHIP_LABEL_KO, isUuid, sameUserId, type MembershipId } from "../../lib/admin/contract";
 import { QA_USERS } from "../../lib/admin/qa/isolated-store";
+import { navHref } from "../../lib/admin-routes";
 import { resolveOrigin } from "../../lib/admin/origin";
 import type { AdminResult } from "../../lib/admin/errors";
 import type { AdminOpsPort, BonusList, ConfirmDraft, MembershipSnapshot } from "../../lib/admin/types";
@@ -51,7 +52,7 @@ export function UsersSearch({
       });
       return;
     }
-    window.location.assign(`/users/${found.data.userId}`);
+    window.location.assign(navHref(`/users/${found.data.userId}`));
   };
   return (
     <section className="panel">
@@ -93,16 +94,16 @@ export function UsersSearch({
         <div className="ops-form">
           <p className="ops-hint">격리 시험 회원만 아래에 있어요. 실제 회원 목록이 아닙니다.</p>
           <div className="ops-chip-row">
-            <button type="button" data-testid="chip-explicit8" onClick={() => window.location.assign(`/users/${QA_USERS.explicit8}`)}>
+            <button type="button" data-testid="chip-explicit8" onClick={() => window.location.assign(navHref(`/users/${QA_USERS.explicit8}`))}>
               기존 명시 8회
             </button>
-            <button type="button" data-testid="chip-cap0" onClick={() => window.location.assign(`/users/${QA_USERS.cap0}`)}>
+            <button type="button" data-testid="chip-cap0" onClick={() => window.location.assign(navHref(`/users/${QA_USERS.cap0}`))}>
               0회 차단
             </button>
-            <button type="button" data-testid="chip-signup5" onClick={() => window.location.assign(`/users/${QA_USERS.signup5}`)}>
+            <button type="button" data-testid="chip-signup5" onClick={() => window.location.assign(navHref(`/users/${QA_USERS.signup5}`))}>
               신규 기본 5회
             </button>
-            <button type="button" data-testid="chip-missing" onClick={() => window.location.assign(`/users/${QA_USERS.missing}`)}>
+            <button type="button" data-testid="chip-missing" onClick={() => window.location.assign(navHref(`/users/${QA_USERS.missing}`))}>
               없는 회원
             </button>
             <button

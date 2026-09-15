@@ -621,6 +621,18 @@ export function createIsolatedStore() {
       if (!checked.ok) return checked;
       return { ok: true as const, status: 200, data: { persist: persistBodyFromDraft(checked.data) } };
     },
+    listProducts() {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      return {
+        ok: true as const,
+        status: 200,
+        data: {
+          items: [...products.values()],
+          storeStatus: schemaReady ? ("ready" as const) : ("unready" as const),
+        },
+      };
+    },
     registerProduct(draft: OperatorProductDraft) {
       const auth = needWrite("userMatchPolicy");
       if (!auth.ok) return auth;

@@ -38,6 +38,7 @@ function waitingAdapter(): AdminOpsPort {
     listPresentation: wait,
     putPresentation: wait,
     previewProduct: wait,
+    listProducts: wait,
     registerProduct: wait,
     updateProduct: wait,
     updateProductVisibility: wait,
@@ -112,6 +113,9 @@ function isolatedAdapter(store: IsolatedStore): AdminOpsPort {
     },
     async previewProduct(draft) {
       return store.previewProduct(draft);
+    },
+    async listProducts() {
+      return store.listProducts();
     },
     async registerProduct(draft) {
       await store.waitIfDelayed();

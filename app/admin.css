@@ -21,6 +21,8 @@ body{font-family:Pretendard,"Pretendard Variable",SUIT,"Noto Sans KR",-apple-sys
 .ops-banner-wait{border-color:#f0c88f;background:#fff7e9}
 .ops-banner-qa{border-color:#cfeade;background:#f5fbf8}
 .ops-banner-alert{border-color:#f0b4ae;background:#fff1ee}
+.panelhead{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.panel>.ops-hint{padding:0 22px 18px}
 .ops-form{display:flex;flex-direction:column;gap:14px;padding:18px 22px 22px}
 .ops-field{display:flex;flex-direction:column;gap:6px}
 .ops-field>span{font-size:14px;font-weight:800}

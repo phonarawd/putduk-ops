@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { createAdminAdapter, sessionLabel } from "../lib/admin/adapter";
 import { COPY } from "../lib/admin/copy";
+import { appPath, navHref } from "../lib/admin-routes";
 import { rememberIsolatedQa, resolveOrigin, type OriginDecision } from "../lib/admin/origin";
 import type { AdminSession } from "../lib/admin/types";
 import { CatalogScreen } from "./admin-screens/catalog-screen";
@@ -29,7 +30,6 @@ import {
   Content,
   Conversation,
   Conversations,
-  Dashboard,
   DraftUserExtras,
   History,
   Identity,
@@ -47,8 +47,7 @@ import { PresentationScreen } from "./admin-screens/presentation-screen";
 import { QaBanner, WaitBanner } from "./admin-screens/shared";
 
 const groups = [
-  { label: "오늘 할 일", href: "/", icon: LayoutDashboard },
-  { label: "상품 관리", href: "/catalog", icon: Package },
+  { label: "상품 목록", href: "/", icon: Package },
   {
     label: "회원과 상담",
     href: "/users",
@@ -122,17 +121,17 @@ const groups = [
 ];
 
 function returnToFrom(route: string): string {
-  if (typeof window === "undefined") return route === "/login" ? "/" : route;
+  if (typeof window === "undefined") return route === "/login" ? navHref("/") : navHref(route);
   const next = new URLSearchParams(window.location.search).get("next");
   if (next && next.startsWith("/") && !next.startsWith("//")) return next;
-  return route === "/login" ? "/" : route;
+  return route === "/login" ? navHref("/") : navHref(route);
 }
 
 function loginHref(route: string): string {
   const next = route === "/login" ? "/" : route;
   const origin = resolveOrigin();
   const qa = origin.mode === "isolated-qa" ? "&isolatedQa=1" : "";
-  return `/login?next=${encodeURIComponent(next)}${qa}`;
+  return `${navHref("/login")}?next=${encodeURIComponent(navHref(next))}${qa}`;
 }
 
 function useAppRoute(initialRoute: string): string {
@@ -143,14 +142,19 @@ function useAppRoute(initialRoute: string): string {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
   if (typeof window !== "undefined" && pop > 0) {
-    return window.location.pathname || initialRoute;
+    return appPath(window.location.pathname || initialRoute);
   }
-  return initialRoute;
+  return appPath(initialRoute);
+}
+
+function subscribeNoop() {
+  return () => {};
 }
 
 export function AdminApp({ route: initialRoute }: { route: string }) {
+  const booted = useSyncExternalStore(subscribeNoop, () => true, () => false);
   const origin = resolveOrigin();
-  const adapter = useMemo(() => createAdminAdapter(), []);
+  const adapter = useMemo(() => (booted ? createAdminAdapter() : null), [booted]);
   const route = useAppRoute(initialRoute);
   const [mobile, setMobile] = useState(false);
   const [query, setQuery] = useState("");
@@ -160,6 +164,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
 
   useEffect(() => {
+    if (!adapter) return;
     let alive = true;
     void adapter.session().then((res) => {
       if (!alive) return;
@@ -179,8 +184,10 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
 
   const go = (href: string) => {
     setMobile(false);
-    window.location.assign(href);
+    window.location.assign(navHref(href));
   };
+
+  if (!booted || !adapter) return <main className="auth-loading">운영자 로그인 확인 중…</main>;
 
   if (route === "/login") {
     return (
@@ -207,9 +214,11 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
       ? "회원 기회·등급"
       : route.startsWith("/conversations/ai/")
         ? "AI 대화 상세"
-        : known
-          ? "오늘 할 일"
-          : "없는 화면")) as string;
+        : route === "/catalog"
+          ? "상품 목록"
+          : known
+            ? "상품 목록"
+            : "없는 화면")) as string;
   const who = sessionLabel(session);
   const userId = route.startsWith("/users/") ? decodeURIComponent(route.split("/").pop() || "") : "";
 
@@ -234,7 +243,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
               <div key={g.label}>
                 <Link
                   className={on ? "on" : ""}
-                  href={g.href}
+                  href={navHref(g.href)}
                   onClick={(e) => {
                     e.preventDefault();
                     go(g.href);
@@ -250,7 +259,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
                       <Link
                         key={h}
                         className={route === h ? "on" : ""}
-                        href={h}
+                        href={navHref(h)}
                         onClick={(e) => {
                           e.preventDefault();
                           go(h);
@@ -272,14 +281,14 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             <small>{who.role}</small>
           </div>
           <Link
-            href="/login"
+            href={navHref("/login")}
             aria-label="로그아웃"
             data-testid="logout"
             onClick={(e) => {
               e.preventDefault();
               void adapter.logout().then(() => {
                 rememberIsolatedQa(false);
-                window.location.assign("/login");
+                window.location.assign(navHref("/login"));
               });
             }}
           >
@@ -327,8 +336,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
               <p>{description(route)}</p>
             </div>
           </div>
-          {route === "/" ? <Dashboard /> : null}
-          {route === "/catalog" ? <CatalogScreen adapter={adapter} notify={notify} /> : null}
+          {route === "/" || route === "/catalog" ? <CatalogScreen adapter={adapter} notify={notify} /> : null}
           {route === "/users" ? <UsersSearch adapter={adapter} /> : null}
           {route.startsWith("/users/") ? (
             <>
@@ -376,8 +384,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
 
 function description(r: string) {
   if (!isKnownRoute(r)) return COPY.missingRoute;
-  if (r === "/") return "실제 대기함이 붙기 전에는 확인할 수 없음으로 둡니다.";
-  if (r === "/catalog") return COPY.catalogS2;
+  if (r === "/" || r === "/catalog") return COPY.catalogS2;
   if (r === "/users") return "정확한 회원 번호로만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.";
   if (r.startsWith("/users/")) return "하루 기본 기회, 추가 지급, 미사용 회수, 수동 등급을 서버 응답으로만 다룹니다.";
   if (r === "/membership/grades") return "등급별 하루 기본 기회입니다. 기존 회원을 5회로 덮지 않아요.";

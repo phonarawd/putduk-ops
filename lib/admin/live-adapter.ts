@@ -35,6 +35,7 @@ import type {
   GradeDailyCaps,
   MembershipSnapshot,
   ParticipationRow,
+  ProductListResult,
   ProductWriteResult,
   UserMembership,
   WriteMeta,
@@ -412,6 +413,34 @@ export function createLiveAdapter(): AdminOpsPort {
       const checked = validateOperatorProductDraft(draft);
       if (!checked.ok) return checked;
       return { ok: true, status: 200, data: { persist: persistBodyFromDraft(checked.data) } };
+    },
+    async listProducts() {
+      const res = await adminFetch<unknown>("GET", MALL_ADMIN_ROUTES.register);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items)
+        ? rec.items
+        : Array.isArray(rec?.products)
+          ? rec.products
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+      const items: OperatorProduct[] = [];
+      for (const raw of rawItems) {
+        const product = readProduct(raw);
+        if (product) items.push(product);
+      }
+      const nextCursor = readString(rec?.nextCursor) ?? readString(rec?.cursor);
+      const storeStatus = rec?.storeStatus === "ready" || rec?.storeStatus === "unready" ? rec.storeStatus : undefined;
+      return {
+        ok: true,
+        status: res.status,
+        data: {
+          items,
+          ...(nextCursor ? { nextCursor } : {}),
+          ...(storeStatus ? { storeStatus } : {}),
+        } satisfies ProductListResult,
+      };
     },
     async registerProduct(draft) {
       const checked = validateOperatorProductDraft(draft);

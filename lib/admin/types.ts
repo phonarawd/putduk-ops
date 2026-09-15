@@ -133,6 +133,12 @@ export type ProductWriteResult = {
   product: OperatorProduct;
 } & WriteMeta;
 
+export type ProductListResult = {
+  items: OperatorProduct[];
+  nextCursor?: string;
+  storeStatus?: "ready" | "unready";
+};
+
 export type ProductUpdateDraft = Partial<OperatorProductDraft> & {
   expectedRevision?: number;
 };
@@ -182,6 +188,7 @@ export type AdminOpsPort = {
     body: { profile: PresentationProfile; reason: string; expectedRevision?: number },
   ): Promise<AdminResult<PresentationListing & WriteMeta>>;
   previewProduct(draft: OperatorProductDraft): Promise<AdminResult<{ persist: OperatorProductDraft }>>;
+  listProducts(): Promise<AdminResult<ProductListResult>>;
   registerProduct(draft: OperatorProductDraft): Promise<AdminResult<ProductWriteResult>>;
   updateProduct(id: string, draft: ProductUpdateDraft): Promise<AdminResult<ProductWriteResult>>;
   updateProductVisibility(

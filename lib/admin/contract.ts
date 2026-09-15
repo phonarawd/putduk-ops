@@ -114,8 +114,8 @@ export const PRICE_CONFIRMATION_MEMO_CORE = true;
 export const PRICE_CONFIRMATION_MEMO_LIVE_COLUMN = false;
 export const RESELLER_ID_LIVE_HTTP = true;
 export const RESELLER_ID_LIVE_POSTGRES_VERIFIED = false;
-/** Admin 상품 목록·단건 GET은 컨트롤러에 없음. URL을 만들지 않는다. */
-export const PRODUCT_LIST_GET_EXISTS = false;
+/** Admin 상품 목록 GET은 operator-products 동일 path. 단건 GET은 컨트롤러에 없음. */
+export const PRODUCT_LIST_GET_EXISTS = true;
 export const PRODUCT_GET_BY_ID_EXISTS = false;
 /** mall core update는 revision을 올리지만 expectedRevision 409는 아직 없음. 화면은 409를 처리할 준비만 한다. */
 export const PRODUCT_REVISION_CONFLICT_IN_CORE = false;
@@ -148,6 +148,7 @@ export const DOCUMENTED_UNIMPLEMENTED = {
 export const CURRENT_CONTRACT_PATHS = {
   adminSessionLogin: "POST /api/v1/admin-session/login",
   adminUsersUuidLookup: "GET /api/v1/admin/users?q=",
+  operatorProductsList: "GET /api/v1/admin/opportunities/operator-products",
   operatorProducts: "POST /api/v1/admin/opportunities/operator-products",
   operatorProductById: "PATCH /api/v1/admin/opportunities/:id/operator-product",
   operatorVisibility: "PATCH /api/v1/admin/opportunities/:id/visibility",

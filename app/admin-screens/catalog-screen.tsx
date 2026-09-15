@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { COPY } from "../../lib/admin/copy";
 import { PRODUCT_VISIBILITY, isUuid, type ProductVisibility } from "../../lib/admin/contract";
 import {
@@ -30,6 +30,21 @@ const emptyForm = {
   baseAmount: "",
   costAmount: "",
 };
+
+function formFromProduct(product: OperatorProduct) {
+  return {
+    name: product.name,
+    description: product.description,
+    photos: product.photos.join("\n"),
+    compositionQty: String(product.compositionQty),
+    payoutAmount: product.payoutAmount,
+    visibility: product.visibility,
+    selectedMemberIds: product.selectedMemberIds.join("\n"),
+    operatorMemo: product.priceConfirmationMemo,
+    baseAmount: "",
+    costAmount: "",
+  };
+}
 
 function previewLines(
   persist: ReturnType<typeof persistBodyFromDraft>,
@@ -65,6 +80,11 @@ export function CatalogScreen({
   notify: (message: string, ok?: boolean) => void;
 }) {
   const origin = resolveOrigin();
+  const [view, setView] = useState<"list" | "form">("list");
+  const [listItems, setListItems] = useState<OperatorProduct[]>([]);
+  const [listBusy, setListBusy] = useState(true);
+  const [listError, setListError] = useState<AdminResult<unknown> | null>(null);
+  const [listUnready, setListUnready] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [preview, setPreview] = useState<string>("");
   const [error, setError] = useState<AdminResult<unknown> | null>(null);
@@ -76,6 +96,36 @@ export function CatalogScreen({
   const [rows, setRows] = useState<ParticipationRow[] | null>(null);
   const genRef = useRef(0);
   const busyRef = useRef(false);
+
+  const applyListResult = (res: Awaited<ReturnType<AdminOpsPort["listProducts"]>>) => {
+    if (!res.ok) {
+      setListItems([]);
+      setListError(res);
+      setListUnready(false);
+      setListBusy(false);
+      return;
+    }
+    setListError(null);
+    setListItems(res.data.items);
+    setListUnready(res.data.storeStatus === "unready");
+    setListBusy(false);
+  };
+
+  const refreshList = async () => {
+    const res = await adapter.listProducts();
+    applyListResult(res);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    void adapter.listProducts().then((res) => {
+      if (!alive) return;
+      applyListResult(res);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [adapter]);
 
   const checked = validateOperatorProductDraft({
     name: form.name,
@@ -90,6 +140,40 @@ export function CatalogScreen({
 
   const targetId = knownId.trim() || lastProduct?.id || "";
   const expectedRevision = lastProduct && lastProduct.id === targetId ? lastProduct.revision : undefined;
+
+  const openRegister = () => {
+    genRef.current += 1;
+    setForm(emptyForm);
+    setPreview("");
+    setError(null);
+    setDraft(null);
+    setPending(null);
+    setKnownId("");
+    setLastProduct(null);
+    setRows(null);
+    setView("form");
+  };
+
+  const openEdit = (product: OperatorProduct) => {
+    genRef.current += 1;
+    setForm(formFromProduct(product));
+    setPreview("");
+    setError(null);
+    setDraft(null);
+    setPending(null);
+    setKnownId(product.id);
+    setLastProduct(product);
+    setRows(null);
+    setView("form");
+  };
+
+  const backToList = () => {
+    if (busyRef.current || busy) return;
+    setDraft(null);
+    setPending(null);
+    setView("list");
+    void refreshList();
+  };
 
   const runPreview = () => {
     if (!checked.ok) {
@@ -138,6 +222,7 @@ export function CatalogScreen({
     notify("서버가 확인한 상품을 다시 받았어요.", true);
     setError(null);
     applyProduct(res.data.product, gen);
+    void refreshList();
   };
 
   const saveRegister = async () => {
@@ -203,17 +288,79 @@ export function CatalogScreen({
     }
   };
 
+  if (view === "list") {
+    return (
+      <>
+        {origin.mode !== "live" ? (
+          <DraftBanner>
+            {COPY.catalogS2} {COPY.catalogPersistUnready}
+          </DraftBanner>
+        ) : null}
+        <ResultBanner result={listError} />
+        {listUnready ? <WaitBanner>{COPY.storeUnready}</WaitBanner> : null}
+        <section className="panel" data-testid="catalog-list">
+          <div className="panelhead">
+            <div>
+              <h2>등록된 상품</h2>
+              <p>서버가 준 목록만 보여 줍니다. 없는 통계는 만들지 않아요.</p>
+            </div>
+            <button type="button" className="primary" data-testid="catalog-register" onClick={openRegister}>
+              상품 등록
+            </button>
+          </div>
+          {listBusy ? <p className="ops-hint">{COPY.catalogListLoading}</p> : null}
+          {!listBusy && listError ? <p className="ops-hint">{COPY.catalogListUnavailable}</p> : null}
+          {!listBusy && !listError && listItems.length === 0 ? (
+            <p className="ops-hint" data-testid="catalog-list-empty">
+              {COPY.catalogListEmpty}
+            </p>
+          ) : null}
+          {!listBusy && listItems.length > 0 ? (
+            <div className="tasklist">
+              {listItems.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  data-testid="catalog-product-row"
+                  data-product-id={product.id}
+                  onClick={() => openEdit(product)}
+                >
+                  <span className="taskcopy">
+                    <b>{product.name}</b>
+                    <small>
+                      {visibilityLabelKo(product.visibility)} · 설정 {product.payoutAmount} {product.currency} ·{" "}
+                      {product.id}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
-      <DraftBanner>
-        {COPY.catalogS2} {COPY.catalogPersistUnready}
-      </DraftBanner>
+      {origin.mode !== "live" ? (
+        <DraftBanner>
+          {COPY.catalogS2} {COPY.catalogPersistUnready}
+        </DraftBanner>
+      ) : (
+        <p className="ops-hint">{COPY.catalogS2}</p>
+      )}
       <WaitBanner>{COPY.catalogNoGet}</WaitBanner>
       <WaitBanner>{COPY.catalogMemoHint}</WaitBanner>
       <p className="ops-hint">{COPY.catalogConcurrent}</p>
       <p className="ops-hint">{COPY.catalogSnapshot}</p>
       <p className="ops-hint">{COPY.catalogIdempotency}</p>
       <ResultBanner result={error} />
+      <div className="ops-actions" style={{ marginBottom: 12 }}>
+        <button type="button" data-testid="catalog-back-to-list" disabled={busy} onClick={backToList}>
+          목록으로
+        </button>
+      </div>
       <section className="panel">
         <div className="panelhead">
           <div>
@@ -328,7 +475,7 @@ export function CatalogScreen({
           </div>
         </div>
         <div className="ops-form">
-          <Field label="상품 번호" hint="목록 API가 없어 방금 저장한 번호나 이미 아는 UUID만 넣어요.">
+          <Field label="상품 번호" hint="단건 조회 API가 없어 목록에서 고른 번호나 이미 아는 UUID만 넣어요.">
             <input
               data-testid="catalog-known-id"
               value={knownId}
@@ -342,7 +489,7 @@ export function CatalogScreen({
           <p className="ops-hint" data-testid="catalog-last-id">
             {lastProduct
               ? `마지막 저장 응답 ${lastProduct.id} · 버전 ${lastProduct.revision}`
-              : "마지막 저장 응답 없음. 조회 API로 채우지 않았어요."}
+              : "마지막 저장 응답 없음. 단건 조회로 채우지 않았어요."}
           </p>
           <div className="ops-actions">
             <button
@@ -357,7 +504,7 @@ export function CatalogScreen({
                   targetLabel: targetId,
                   currentLabel: expectedRevision != null ? `버전 ${expectedRevision}` : "버전 확인 불가",
                   nextLabel: checked.ok ? checked.data.name : "검증 실패",
-                  impact: "목록 조회 없이 아는 번호로만 요청합니다. 409면 다시 확인하세요. 기존 참여 snapshot은 유지됩니다.",
+                  impact: "단건 조회 없이 아는 번호로만 요청합니다. 409면 다시 확인하세요. 기존 참여 snapshot은 유지됩니다.",
                   reason: "운영자 상품 수정 요청",
                   approval: expectedRevision != null ? `expectedRevision ${expectedRevision}` : "버전 없음",
                 });

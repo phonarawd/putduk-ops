@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Eye, EyeOff } from "lucide-react";
 import { COPY } from "../../lib/admin/copy";
 import { CURRENT_CONTRACT_PATHS, CONTRACT_ACTIVATION, LEGACY_DOCUMENTED_PATHS } from "../../lib/admin/contract";
+import { navHref } from "../../lib/admin-routes";
 import { resolveOrigin, rememberIsolatedQa, isLoopbackHost } from "../../lib/admin/origin";
 import type { AdminOpsPort } from "../../lib/admin/types";
 
@@ -42,7 +43,7 @@ export function LoginScreen({
   const goIsolated = async () => {
     if (!loopback) return;
     rememberIsolatedQa(true);
-    window.location.replace(`/login?isolatedQa=1&next=${encodeURIComponent(returnTo)}`);
+      window.location.replace(`${navHref("/login")}?isolatedQa=1&next=${encodeURIComponent(returnTo)}`);
   };
 
   const submit = async (e: React.FormEvent) => {

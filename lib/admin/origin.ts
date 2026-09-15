@@ -69,6 +69,16 @@ export function resolveOrigin(): OriginDecision {
     };
   }
 
+  if (typeof window !== "undefined" && !loopback) {
+    return {
+      mode: "live",
+      apiOrigin: window.location.origin,
+      reason: "같은 주소에서 운영자 세션 쿠키를 사용합니다.",
+      sameOrigin: true,
+      loopback,
+    };
+  }
+
   const configured = envText("PUTDUK_ADMIN_API_ORIGIN") ?? envText("NEXT_PUBLIC_PUTDUK_ADMIN_API_ORIGIN");
   if (!configured) {
     return {

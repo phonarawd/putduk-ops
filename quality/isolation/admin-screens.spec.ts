@@ -29,6 +29,12 @@ async function loginIsolated(page: Page, next = "/") {
   await expect(page.getByTestId("page-title")).toBeVisible({ timeout: 20_000 });
 }
 
+async function openCatalogForm(page: Page) {
+  await expect(page.getByTestId("catalog-list")).toBeVisible();
+  await page.getByTestId("catalog-register").click();
+  await expect(page.getByTestId("catalog-name")).toBeVisible();
+}
+
 test.describe.configure({ mode: "serial" });
 
 test.describe("isolated-qa screens @mock", () => {
@@ -39,21 +45,27 @@ test.describe("isolated-qa screens @mock", () => {
   test("로그인 격리 시험은 계정 이름으로만 들어간다", async ({ page }) => {
     await loginIsolated(page, "/");
     await expect(page.getByTestId("header-health")).toContainText("격리 시험 중");
-    await expect(page.getByTestId("page-title")).toHaveText("오늘 할 일");
+    await expect(page.getByTestId("page-title")).toHaveText("상품 목록");
+    await expect(page.getByTestId("catalog-list")).toBeVisible();
+    await expect(page.getByTestId("catalog-list-empty")).toBeVisible();
   });
 
-  test("없는 화면은 오늘 할 일로 바꾸지 않는다", async ({ page }) => {
+  test("없는 화면은 상품 목록으로 바꾸지 않는다", async ({ page }) => {
     await loginIsolated(page, "/no-such-page");
     await expect(page.getByTestId("page-title")).toHaveText("없는 화면");
     await expect(page.getByTestId("missing-route")).toContainText("없는 화면");
     await expect(page.getByTestId("dashboard-draft-tasks")).toHaveCount(0);
+    await expect(page.getByTestId("catalog-list")).toHaveCount(0);
   });
 
-  test("오늘 할 일 초안은 완료 버튼이 아니다", async ({ page }) => {
+  test("상품 목록에 가짜 티켓이 없다", async ({ page }) => {
     await loginIsolated(page, "/");
-    await expect(page.getByTestId("dashboard-draft-tasks")).toBeVisible();
-    await expect(page.getByTestId("dashboard-draft-tasks").locator("button")).toHaveCount(0);
+    await expect(page.getByTestId("catalog-list")).toBeVisible();
+    await expect(page.getByTestId("dashboard-draft-tasks")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("W-24001");
     await expect(page.locator("body")).not.toContainText("W-24091");
+    await expect(page.locator("body")).not.toContainText("A-08871");
+    await expect(page.locator("body")).not.toContainText("AI-8821");
   });
 
   test("UUID 조회 404는 다른 회원으로 바꾸지 않는다", async ({ page }) => {
@@ -110,7 +122,8 @@ test.describe("isolated-qa screens @mock", () => {
 
   test("상품 폼은 미리보기 가능하고 실서버 저장은 막힌다", async ({ page }) => {
     await loginIsolated(page, "/catalog");
-    await expect(page.getByTestId("page-title")).toHaveText("상품 관리");
+    await expect(page.getByTestId("page-title")).toHaveText("상품 목록");
+    await openCatalogForm(page);
     await page.getByTestId("catalog-name").fill("격리 시험 공용 상품");
     await page.getByTestId("catalog-qty").fill("2");
     await page.getByTestId("catalog-payout").fill("12.5");
@@ -127,6 +140,7 @@ test.describe("isolated-qa screens @mock", () => {
 
   test("선택 공개는 독점 예약이 아니고 메모는 시스템 검증이 아니다", async ({ page }) => {
     await loginIsolated(page, "/catalog");
+    await openCatalogForm(page);
     await page.getByTestId("catalog-name").fill("격리 선택 공개 상품");
     await page.getByTestId("catalog-qty").fill("1");
     await page.getByTestId("catalog-payout").fill("3.5");
@@ -146,6 +160,7 @@ test.describe("isolated-qa screens @mock", () => {
   test("모바일에서 상품 입력칸이 뷰포트 안에 남는다", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginIsolated(page, "/catalog");
+    await openCatalogForm(page);
     const box = await page.getByTestId("catalog-name").boundingBox();
     expect(box).not.toBeNull();
     if (!box) return;
@@ -179,6 +194,7 @@ test.describe("isolated-qa screens @mock", () => {
   test("준비된 격리 저장소에서 상품 수정 409는 완료가 아니다", async ({ page }) => {
     await loginIsolated(page, "/catalog");
     await page.getByTestId("qa-store-ready").click();
+    await openCatalogForm(page);
     await page.getByTestId("catalog-name").fill("격리 준비 상품");
     await page.getByTestId("catalog-qty").fill("2");
     await page.getByTestId("catalog-payout").fill("12.5");
@@ -198,6 +214,7 @@ test.describe("isolated-qa screens @mock", () => {
   test("없는 상품 참여 조회는 다른 상품으로 바꾸지 않는다", async ({ page }) => {
     await loginIsolated(page, "/catalog");
     await page.getByTestId("qa-store-ready").click();
+    await openCatalogForm(page);
     await page.getByTestId("catalog-known-id").fill("55555555-5555-4555-8555-555555555555");
     await page.getByTestId("catalog-participations").click();
     await expect(page.getByTestId("ops-result-banner")).toBeVisible();
@@ -215,6 +232,7 @@ test.describe("isolated-qa screens @mock", () => {
 
   test("중복 확인 클릭은 처리 중이면 다시 보내지 않는다", async ({ page }) => {
     await loginIsolated(page, "/catalog?writeDelay=1500");
+    await openCatalogForm(page);
     await page.getByTestId("catalog-name").fill("중복 클릭 상품");
     await page.getByTestId("catalog-qty").fill("1");
     await page.getByTestId("catalog-payout").fill("2.5");
@@ -229,6 +247,7 @@ test.describe("isolated-qa screens @mock", () => {
   test("짧은 화면에서도 저장 버튼과 오류 안내가 보인다", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await loginIsolated(page, "/catalog");
+    await openCatalogForm(page);
     const save = page.getByTestId("catalog-save");
     await expect(save).toBeVisible();
     const box = await save.boundingBox();

@@ -19,7 +19,10 @@ export const COPY = {
   busy: "이미 처리 중이에요. 같은 요청을 다시 보내지 않았어요.",
   draftBanner: "이 화면은 초안입니다. 실제 운영 데이터와 연결되어 있지 않아요.",
   noFakeComplete: "서버가 확인한 실제 효과가 없어 완료로 표시하지 않았어요.",
-  missingRoute: "없는 화면입니다. 오늘 할 일로 바꾸지 않았어요.",
+  missingRoute: "없는 화면입니다. 상품 목록으로 바꾸지 않았어요.",
+  catalogListEmpty: "등록된 상품이 없습니다.",
+  catalogListUnavailable: "상품 목록을 확인할 수 없습니다. 추측 목록으로 채우지 않았어요.",
+  catalogListLoading: "상품 목록을 불러오는 중…",
   usersSearchHelp:
     "지금 지원하는 것은 정확한 회원 번호(UUID) 한 건 조회입니다. 페이지 목록은 없고, 빈 검색은 목록 성공이 아닙니다.",
   usersNoFallback: "없는 회원은 다른 회원으로 바꾸지 않아요.",
@@ -44,7 +47,7 @@ export const COPY = {
   resellerUnissued:
     "리셀러 ID 미발급. 서버가 resellerId를 주지 않았어요. 계정 이름·추천 코드로 채우지 않았어요.",
   catalogNoGet:
-    "상품 목록·단건 조회 Admin API는 없습니다. 방금 저장 응답과 이미 아는 상품 번호로만 수정·공개·참여 조회를 요청합니다.",
+    "상품 단건 조회 Admin API는 없습니다. 목록 응답과 방금 저장한 상품 번호로만 수정·공개·참여 조회를 요청합니다.",
   catalogSnapshot:
     "기존 참여는 당시 snapshot을 유지합니다. 지금 설정액·공개 범위로 바꾸지 않아요. 저널 없는 금액은 실지급이 아닙니다.",
   catalogIdempotency:
