@@ -4,7 +4,8 @@
 
 | 화면 | Adapter 의도 |
 |---|---|
-| 운영자 로그인 | 기존 Admin Auth의 `signIn`, `signOut`, `refreshSession`, `fetchCurrentAdmin`, `verifySecondFactor`에 연결 |
+| 운영자 로그인 | `POST /api/v1/admin-session/login` · `GET /api/v1/admin-session` · `POST /api/v1/admin-session/logout` |
+| 운영 상품 | `GET/POST /api/v1/admin/opportunities/operator-products` · `PATCH .../operator-product` · `PATCH .../visibility` · `GET .../participations` |
 | 회원 | `fetchAdminUsers`, `fetchAdminUser`, `revealAdminUserPii` |
 | AI 대화 | `fetchAiConversations`, `fetchAiConversation`, `markAiConversationReviewed`, `fetchAiConversationAccessHistory` |
 | 출금 | `fetchWithdrawRequests`, `approveWithdrawRequest`, `rejectWithdrawRequest` |
