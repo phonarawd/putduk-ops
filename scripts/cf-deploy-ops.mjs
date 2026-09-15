@@ -108,22 +108,29 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
 }
 
 async function smoke(label, url) {
-  const target = `${url.replace(/\/$/, "")}/admin`;
-  const res = await fetch(target, { redirect: "follow" });
-  const html = await res.text();
-  const title = (html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
-  const putduk = html.includes("퍼뜩") || title.includes("퍼뜩");
-  const legacy = html.includes("AI Profit OS Ops");
-  console.log(
-    `[cf-deploy-ops] smoke ${label} ${res.status} title=${title.replace(/\s+/g, " ").trim()} putduk=${putduk} legacy=${legacy}`,
-  );
-  if (res.status >= 400) {
-    throw new Error(`${label} HTTP ${res.status}`);
+  const target = `${url.replace(/\/$/, "")}/admin?cb=${Date.now()}`;
+  let last;
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    const res = await fetch(target, {
+      redirect: "follow",
+      headers: { "cache-control": "no-cache" },
+    });
+    const html = await res.text();
+    const title = (html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
+    const putduk = html.includes("퍼뜩") || title.includes("퍼뜩");
+    const legacy = html.includes("AI Profit OS Ops");
+    last = { url: target, status: res.status, title, putduk, legacy };
+    console.log(
+      `[cf-deploy-ops] smoke ${label} #${attempt} ${res.status} title=${title.replace(/\s+/g, " ").trim()} putduk=${putduk} legacy=${legacy}`,
+    );
+    if (res.status < 400 && putduk && !legacy) return last;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
   }
-  if (legacy && !putduk) {
+  if (last?.status >= 400) throw new Error(`${label} HTTP ${last.status}`);
+  if (last?.legacy && !last.putduk) {
     throw new Error(`${label} still serving AI Profit OS Ops`);
   }
-  return { url: target, status: res.status, title, putduk, legacy };
+  return last;
 }
 
 const origin = await smoke("origin", ORIGIN_SMOKE);
