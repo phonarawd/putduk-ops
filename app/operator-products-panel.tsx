@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, ChevronRight, PackagePlus } from "lucide-react";
+import {adminHref} from "@/lib/admin-routes";
 import {
   type ApiFailure,
   type DirectoryMember,
@@ -143,7 +144,7 @@ function ProductList() {
               </button>
             ))}
           </div>
-          <Link className="primary" href="/products/new">
+          <Link className="primary" href={adminHref("/products/new")}>
             새 상품 등록
           </Link>
         </div>
@@ -180,7 +181,7 @@ function ProductList() {
                     </td>
                     <td>{item.revision ?? "—"}</td>
                     <td>
-                      <Link className="textbtn" href={`/products/${item.id}`}>
+                      <Link className="textbtn" href={adminHref(`/products/${item.id}`)}>
                         자세히 보기
                       </Link>
                     </td>
@@ -274,10 +275,10 @@ function ProductCreate({ notify }: { notify: (message: string) => void }) {
           <dd>{created.revision ?? "—"}</dd>
         </dl>
         <div className="ops-form-actions">
-          <Link className="primary" href={`/products/${created.id}`}>
+          <Link className="primary" href={adminHref(`/products/${created.id}`)}>
             상세에서 이어서 수정
           </Link>
-          <Link href="/products">목록으로</Link>
+          <Link href={adminHref("/products")}>목록으로</Link>
         </div>
       </section>
     );
@@ -310,7 +311,7 @@ function ProductCreate({ notify }: { notify: (message: string) => void }) {
         <button className="primary" disabled={busy}>
           {busy ? "등록하는 중…" : "공개 상품으로 등록"}
         </button>
-        <Link href="/products">취소</Link>
+        <Link href={adminHref("/products")}>취소</Link>
       </div>
     </form>
   );
@@ -486,7 +487,7 @@ function ProductDetail({
             {product.payoutAmount || product.configuredPayoutUsdt || "—"} {product.currency}
           </p>
         </div>
-        <Link className="textbtn" href="/products">
+        <Link className="textbtn" href={adminHref("/products")}>
           목록으로
         </Link>
       </section>
