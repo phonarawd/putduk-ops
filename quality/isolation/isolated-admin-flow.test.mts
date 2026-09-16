@@ -205,6 +205,7 @@ const previewOk = unreadyStore.previewProduct({
   photos: [],
   compositionQty: 2,
   payoutAmount: "12.5",
+  requiredCapitalUsdt: "80",
   currency: "USDT",
   visibility: "all_public",
   selectedMemberIds: [],
@@ -216,6 +217,7 @@ const persistBlocked = unreadyStore.registerProduct({
   photos: [],
   compositionQty: 2,
   payoutAmount: "12.5",
+  requiredCapitalUsdt: "80",
   currency: "USDT",
   visibility: "all_public",
   selectedMemberIds: [],
@@ -285,6 +287,7 @@ const selected = validateOperatorProductDraft({
   photos: [],
   compositionQty: 1,
   payoutAmount: "3.5",
+  requiredCapitalUsdt: "80",
   visibility: "selected_members",
   selectedMemberIds: [QA_USERS.explicit8, QA_USERS.signup5],
 });
@@ -294,7 +297,11 @@ if (selected.ok) {
   assert.equal(persist.visibility, "selected_members");
   assert.equal(persist.selectedMemberIds.length, 2);
   assert.equal(persist.priceConfirmationMemo, "");
+  assert.equal(persist.requiredCapitalUsdt, "80");
+  assert.equal("expectedProfitKrwApprox" in persist, false);
   assert.equal("operatorMemo" in persist, false);
+  assert.equal("displayKrw" in persist, false);
+  assert.equal("fxRate" in persist, false);
 }
 const withMemo = validateOperatorProductDraft({
   name: "메모 포함",
@@ -302,14 +309,42 @@ const withMemo = validateOperatorProductDraft({
   photos: [],
   compositionQty: 1,
   payoutAmount: "1.5",
+  requiredCapitalUsdt: "40",
+  expectedProfitKrwApprox: "15000",
   visibility: "all_public",
   selectedMemberIds: [],
   priceConfirmationMemo: "확인: 1.5 USDT",
 });
 assert.equal(withMemo.ok, true);
 if (withMemo.ok) {
-  assert.equal(persistBodyFromDraft(withMemo.data).priceConfirmationMemo, "확인: 1.5 USDT");
+  const persist = persistBodyFromDraft(withMemo.data);
+  assert.equal(persist.priceConfirmationMemo, "확인: 1.5 USDT");
+  assert.equal(persist.expectedProfitKrwApprox, "15000");
+  assert.equal(persist.requiredCapitalUsdt, "40");
 }
+const zeroKrw = validateOperatorProductDraft({
+  name: "표시 0 금지",
+  description: "",
+  photos: [],
+  compositionQty: 1,
+  payoutAmount: "1.5",
+  requiredCapitalUsdt: "40",
+  expectedProfitKrwApprox: "0",
+  visibility: "all_public",
+  selectedMemberIds: [],
+});
+assert.equal(zeroKrw.ok, false);
+const zeroCapital = validateOperatorProductDraft({
+  name: "필요자본 0 금지",
+  description: "",
+  photos: [],
+  compositionQty: 1,
+  payoutAmount: "1.5",
+  requiredCapitalUsdt: "0",
+  visibility: "all_public",
+  selectedMemberIds: [],
+});
+assert.equal(zeroCapital.ok, false);
 const readyStore = createIsolatedStore();
 readyStore.login("qa-super");
 readyStore.setStoreReady(true);
@@ -319,6 +354,7 @@ const created = readyStore.registerProduct({
   photos: [],
   compositionQty: 1,
   payoutAmount: "12.5",
+  requiredCapitalUsdt: "80",
   currency: "USDT",
   visibility: "all_public",
   selectedMemberIds: [],
@@ -398,7 +434,8 @@ pass("http 401/403/404/409/503/network mapped without fake success");
 
 assert.equal(PRODUCT_LIST_GET_EXISTS, true);
 assert.equal(CURRENT_CONTRACT_PATHS.operatorProductsList.includes("GET /api/v1/admin/opportunities/operator-products"), true);
-assert.equal(PRODUCT_GET_BY_ID_EXISTS, false);
+assert.equal(PRODUCT_GET_BY_ID_EXISTS, true);
+assert.equal(CURRENT_CONTRACT_PATHS.operatorProductGet.includes("operator-products/:id"), true);
 assert.equal(PRODUCT_REVISION_CONFLICT_IN_CORE, false);
 assert.equal(BACKEND_MANIFEST_READ.gitHead !== BACKEND_MANIFEST_READ.manifestEmbeddedHead, true);
 assert.notEqual(BACKEND_MANIFEST_READ.gitHead, "ec436d4d32937f2778b4b764e89918de2ca70280");
@@ -433,6 +470,7 @@ if (created.ok) {
     photos: [],
     compositionQty: 1,
     payoutAmount: "1",
+    requiredCapitalUsdt: "10",
     currency: "USDT",
     visibility: "all_public",
     selectedMemberIds: [],
@@ -446,6 +484,7 @@ if (created.ok) {
     photos: [],
     compositionQty: 1,
     payoutAmount: "12.5",
+    requiredCapitalUsdt: "80",
     currency: "USDT",
     visibility: "all_public",
     selectedMemberIds: [],
@@ -460,6 +499,8 @@ if (created.ok) {
     photos: [],
     compositionQty: 1,
     payoutAmount: "12.5",
+    requiredCapitalUsdt: "80",
+    expectedProfitKrwApprox: "22000",
     currency: "USDT",
     visibility: "selected_members",
     selectedMemberIds: [QA_USERS.explicit8],
@@ -470,7 +511,15 @@ if (created.ok) {
   if (memoKeep.ok) {
     assert.equal(memoKeep.data.product.priceConfirmationMemo, "확인: 12.5 USDT");
     assert.equal(memoKeep.data.product.visibility, "selected_members");
+    assert.equal(memoKeep.data.product.requiredCapitalUsdt, "80");
+    assert.equal(memoKeep.data.product.expectedProfitKrwApprox, "22000");
     assert.equal(isPayoutComplete(memoKeep.data.product.moneyAuthority ?? null), false);
+    const fetched = readyStore.getProduct(created.data.product.id);
+    assert.equal(fetched.ok, true);
+    if (fetched.ok) {
+      assert.equal(fetched.data.requiredCapitalUsdt, "80");
+      assert.equal(fetched.data.expectedProfitKrwApprox, "22000");
+    }
   }
   readyStore.seedParticipation({
     id: "66666666-6666-4666-8666-666666666666",
@@ -494,6 +543,7 @@ if (created.ok) {
     photos: [],
     compositionQty: 1,
     payoutAmount: "1",
+    requiredCapitalUsdt: "10",
     currency: "USDT",
     visibility: "all_public",
     selectedMemberIds: [],

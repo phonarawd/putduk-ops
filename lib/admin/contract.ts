@@ -114,9 +114,9 @@ export const PRICE_CONFIRMATION_MEMO_CORE = true;
 export const PRICE_CONFIRMATION_MEMO_LIVE_COLUMN = false;
 export const RESELLER_ID_LIVE_HTTP = true;
 export const RESELLER_ID_LIVE_POSTGRES_VERIFIED = false;
-/** Admin 상품 목록 GET은 operator-products 동일 path. 단건 GET은 컨트롤러에 없음. */
+/** Admin 상품 목록 GET은 operator-products 동일 path. 단건 GET은 operator-products/:id. */
 export const PRODUCT_LIST_GET_EXISTS = true;
-export const PRODUCT_GET_BY_ID_EXISTS = false;
+export const PRODUCT_GET_BY_ID_EXISTS = true;
 /** mall core update는 revision을 올리지만 expectedRevision 409는 아직 없음. 화면은 409를 처리할 준비만 한다. */
 export const PRODUCT_REVISION_CONFLICT_IN_CORE = false;
 /** 백엔드 persist 계약에 있는 격리 DB 이름. 값이 있다고 연결하지 않는다. */
@@ -150,6 +150,7 @@ export const CURRENT_CONTRACT_PATHS = {
   adminUsersUuidLookup: "GET /api/v1/admin/users?q=",
   operatorProductsList: "GET /api/v1/admin/opportunities/operator-products",
   operatorProducts: "POST /api/v1/admin/opportunities/operator-products",
+  operatorProductGet: "GET /api/v1/admin/opportunities/operator-products/:id",
   operatorProductById: "PATCH /api/v1/admin/opportunities/:id/operator-product",
   operatorVisibility: "PATCH /api/v1/admin/opportunities/:id/visibility",
   operatorParticipations: "GET /api/v1/admin/opportunities/:id/participations",
@@ -184,6 +185,7 @@ export const MEMBERSHIP_ADMIN_ROUTES = {
 
 export const MALL_ADMIN_ROUTES = {
   register: "/admin/opportunities/operator-products",
+  get: (id: string) => `/admin/opportunities/operator-products/${id}`,
   update: (id: string) => `/admin/opportunities/${id}/operator-product`,
   visibility: (id: string) => `/admin/opportunities/${id}/visibility`,
   participations: (id: string) => `/admin/opportunities/${id}/participations`,

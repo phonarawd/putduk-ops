@@ -189,6 +189,7 @@ export type AdminOpsPort = {
   ): Promise<AdminResult<PresentationListing & WriteMeta>>;
   previewProduct(draft: OperatorProductDraft): Promise<AdminResult<{ persist: OperatorProductDraft }>>;
   listProducts(): Promise<AdminResult<ProductListResult>>;
+  getProduct(id: string): Promise<AdminResult<OperatorProduct>>;
   registerProduct(draft: OperatorProductDraft): Promise<AdminResult<ProductWriteResult>>;
   updateProduct(id: string, draft: ProductUpdateDraft): Promise<AdminResult<ProductWriteResult>>;
   updateProductVisibility(

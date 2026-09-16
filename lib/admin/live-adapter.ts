@@ -148,17 +148,22 @@ function readProduct(row: unknown): OperatorProduct | null {
   const rec = asRecord(row);
   if (!rec) return null;
   const id = readString(rec.id);
-  const checked = validateOperatorProductDraft({
-    name: readString(rec.name) ?? "",
-    description: readString(rec.description) ?? "",
-    photos: Array.isArray(rec.photos) ? rec.photos.map((p) => String(p)) : [],
-    compositionQty: rec.compositionQty as number,
-    payoutAmount: readString(rec.payoutAmount) ?? "",
-    currency: readString(rec.currency) ?? "USDT",
-    visibility: readString(rec.visibility) ?? "all_public",
-    selectedMemberIds: Array.isArray(rec.selectedMemberIds) ? rec.selectedMemberIds.map((p) => String(p)) : [],
-    priceConfirmationMemo: readString(rec.priceConfirmationMemo) ?? "",
-  });
+  const checked = validateOperatorProductDraft(
+    {
+      name: readString(rec.name) ?? "",
+      description: readString(rec.description) ?? "",
+      photos: Array.isArray(rec.photos) ? rec.photos.map((p) => String(p)) : [],
+      compositionQty: rec.compositionQty as number,
+      payoutAmount: readString(rec.payoutAmount) ?? "",
+      requiredCapitalUsdt: readString(rec.requiredCapitalUsdt) ?? "",
+      expectedProfitKrwApprox: readString(rec.expectedProfitKrwApprox) ?? "",
+      currency: readString(rec.currency) ?? "USDT",
+      visibility: readString(rec.visibility) ?? "all_public",
+      selectedMemberIds: Array.isArray(rec.selectedMemberIds) ? rec.selectedMemberIds.map((p) => String(p)) : [],
+      priceConfirmationMemo: readString(rec.priceConfirmationMemo) ?? "",
+    },
+    { persist: false },
+  );
   if (!id || !checked.ok) return null;
   const money =
     rec.moneyAuthority != null
@@ -413,6 +418,15 @@ export function createLiveAdapter(): AdminOpsPort {
       const checked = validateOperatorProductDraft(draft);
       if (!checked.ok) return checked;
       return { ok: true, status: 200, data: { persist: persistBodyFromDraft(checked.data) } };
+    },
+    async getProduct(id) {
+      if (!isUuid(id)) return failure(400, "INVALID_INPUT", "상품 번호는 정확한 식별 값이어야 해요.");
+      const res = await adminFetch<unknown>("GET", MALL_ADMIN_ROUTES.get(id));
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const product = readProduct(rec?.product ?? res.data);
+      if (!product) return unknownUnavailable();
+      return { ok: true, status: res.status, data: product };
     },
     async listProducts() {
       const res = await adminFetch<unknown>("GET", MALL_ADMIN_ROUTES.register);
