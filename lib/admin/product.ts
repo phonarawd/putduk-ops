@@ -24,6 +24,8 @@ export type OperatorProductDraft = {
   photos: string[];
   compositionQty: number;
   payoutAmount: string;
+  requiredCapitalUsdt: string;
+  expectedProfitKrwApprox?: string;
   currency: typeof PRODUCT_CURRENCY;
   visibility: ProductVisibility;
   selectedMemberIds: string[];
@@ -119,34 +121,81 @@ export function parseMemberIdLines(raw: string): string[] {
   return out;
 }
 
-export function validateOperatorProductDraft(input: {
-  name: string;
-  description: string;
-  photos: string[];
-  compositionQty: number | string;
-  payoutAmount: string;
-  currency?: string;
-  visibility: string;
-  selectedMemberIds: string[];
-  priceConfirmationMemo?: string;
-}): AdminResult<OperatorProductDraft> {
+function parsePositiveDecimal(
+  raw: string,
+  invalidMessage: string,
+  nonPositiveMessage: string,
+): AdminResult<string> {
+  const amountRaw = raw.trim();
+  if (!isDecimalAmount(amountRaw)) {
+    return failure(400, "INVALID_INPUT", invalidMessage);
+  }
+  try {
+    const n = parseAmount(amountRaw);
+    if (n <= BigInt(0)) return failure(400, "INVALID_INPUT", nonPositiveMessage);
+    return { ok: true, status: 200, data: formatAmount(n) };
+  } catch {
+    return failure(400, "INVALID_INPUT", invalidMessage);
+  }
+}
+
+export function validateOperatorProductDraft(
+  input: {
+    name: string;
+    description: string;
+    photos: string[];
+    compositionQty: number | string;
+    payoutAmount: string;
+    requiredCapitalUsdt?: string;
+    expectedProfitKrwApprox?: string;
+    currency?: string;
+    visibility: string;
+    selectedMemberIds: string[];
+    priceConfirmationMemo?: string;
+  },
+  opts?: { persist?: boolean },
+): AdminResult<OperatorProductDraft> {
+  const persist = opts?.persist !== false;
   const name = input.name.trim();
   if (!name) return failure(400, "INVALID_INPUT", "상품 이름을 적어 주세요.");
   const qty = Number(input.compositionQty);
   if (!Number.isInteger(qty) || qty < 1) {
     return failure(400, "INVALID_INPUT", "구성 수량은 1 이상 정수여야 해요.");
   }
-  const amountRaw = input.payoutAmount.trim();
-  if (!isDecimalAmount(amountRaw)) {
-    return failure(400, "INVALID_INPUT", "회원 지급액은 USDT 소수 문자열이어야 해요.");
+  const payout = parsePositiveDecimal(
+    input.payoutAmount,
+    "정산 USDT는 0보다 큰 소수 문자열이어야 해요.",
+    "정산 USDT는 0보다 커야 해요.",
+  );
+  if (!payout.ok) return payout;
+  const capitalRaw = (input.requiredCapitalUsdt ?? "").trim();
+  let requiredCapitalUsdt = "";
+  if (persist || capitalRaw) {
+    const capital = parsePositiveDecimal(
+      capitalRaw,
+      "필요자본 USDT는 0보다 큰 소수 문자열이어야 해요.",
+      "필요자본 USDT는 0보다 커야 해요.",
+    );
+    if (!capital.ok) return capital;
+    requiredCapitalUsdt = capital.data;
   }
-  let payoutAmount: string;
-  try {
-    const n = parseAmount(amountRaw);
-    if (n <= BigInt(0)) return failure(400, "INVALID_INPUT", "회원 지급액은 0보다 커야 해요.");
-    payoutAmount = formatAmount(n);
-  } catch {
-    return failure(400, "INVALID_INPUT", "회원 지급액은 USDT 소수 문자열이어야 해요.");
+  const krwRaw = (input.expectedProfitKrwApprox ?? "").trim();
+  let expectedProfitKrwApprox: string | undefined;
+  if (krwRaw) {
+    const krw = parsePositiveDecimal(
+      krwRaw,
+      "표시 KRW는 비우거나 0보다 큰 값만 보낼 수 있어요.",
+      "표시 KRW는 0을 보내지 않아요. 비우면 이 칸은 생략해요.",
+    );
+    if (!krw.ok) {
+      if (!persist) {
+        expectedProfitKrwApprox = undefined;
+      } else {
+        return krw;
+      }
+    } else {
+      expectedProfitKrwApprox = krw.data;
+    }
   }
   const currency = (input.currency || PRODUCT_CURRENCY).trim();
   if (currency !== PRODUCT_CURRENCY) {
@@ -183,7 +232,9 @@ export function validateOperatorProductDraft(input: {
       description: input.description.trim(),
       photos: input.photos.map((p) => p.trim()).filter(Boolean),
       compositionQty: qty,
-      payoutAmount,
+      payoutAmount: payout.data,
+      requiredCapitalUsdt,
+      ...(expectedProfitKrwApprox ? { expectedProfitKrwApprox } : {}),
       currency: PRODUCT_CURRENCY,
       visibility: input.visibility,
       selectedMemberIds,
@@ -193,12 +244,20 @@ export function validateOperatorProductDraft(input: {
 }
 
 export function persistBodyFromDraft(draft: OperatorProductDraft): OperatorProductDraft {
+  const krwRaw = (draft.expectedProfitKrwApprox ?? "").trim();
+  let expectedProfitKrwApprox: string | undefined;
+  if (krwRaw) {
+    const krw = parsePositiveDecimal(krwRaw, "", "");
+    if (krw.ok) expectedProfitKrwApprox = krw.data;
+  }
   return {
     name: draft.name,
     description: draft.description,
     photos: [...draft.photos],
     compositionQty: draft.compositionQty,
     payoutAmount: draft.payoutAmount,
+    requiredCapitalUsdt: draft.requiredCapitalUsdt,
+    ...(expectedProfitKrwApprox ? { expectedProfitKrwApprox } : {}),
     currency: draft.currency,
     visibility: draft.visibility,
     selectedMemberIds: [...draft.selectedMemberIds],

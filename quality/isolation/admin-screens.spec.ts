@@ -127,9 +127,12 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-name").fill("격리 시험 공용 상품");
     await page.getByTestId("catalog-qty").fill("2");
     await page.getByTestId("catalog-payout").fill("12.5");
+    await page.getByTestId("catalog-capital").fill("80");
     await page.getByTestId("catalog-preview").click();
     await expect(page.getByTestId("catalog-preview-body")).toContainText("전체 공개");
-    await expect(page.getByTestId("catalog-preview-body")).toContainText("서버에 보내지 않아요");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("정산 USDT: 12.5");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("필요자본 USDT: 80");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("표시 KRW: 없음");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("설정 지급액: 12.5");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("지급 완료 아님");
     await expect(page.getByTestId("catalog-preview-body")).toHaveAttribute("data-payout-complete", "false");
@@ -144,6 +147,7 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-name").fill("격리 선택 공개 상품");
     await page.getByTestId("catalog-qty").fill("1");
     await page.getByTestId("catalog-payout").fill("3.5");
+    await page.getByTestId("catalog-capital").fill("40");
     await page.getByTestId("catalog-visibility").selectOption("selected_members");
     await page.getByTestId("catalog-members").fill(QA_USERS.explicit8);
     await page.getByTestId("catalog-memo").fill("가격 근거 메모는 persist가 아님");
@@ -198,6 +202,7 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-name").fill("격리 준비 상품");
     await page.getByTestId("catalog-qty").fill("2");
     await page.getByTestId("catalog-payout").fill("12.5");
+    await page.getByTestId("catalog-capital").fill("80");
     await page.getByTestId("catalog-memo").fill("확인: 12.5 USDT");
     await page.getByTestId("catalog-save").click();
     await page.getByTestId("confirm-ok").click();
@@ -236,6 +241,7 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-name").fill("중복 클릭 상품");
     await page.getByTestId("catalog-qty").fill("1");
     await page.getByTestId("catalog-payout").fill("2.5");
+    await page.getByTestId("catalog-capital").fill("20");
     await page.getByTestId("catalog-save").click();
     const ok = page.getByTestId("confirm-ok");
     await ok.click();
@@ -258,6 +264,7 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-name").fill("짧은 화면 상품");
     await page.getByTestId("catalog-qty").fill("1");
     await page.getByTestId("catalog-payout").fill("1.5");
+    await page.getByTestId("catalog-capital").fill("10");
     await save.click();
     const confirm = page.getByTestId("confirm-ok");
     await confirm.scrollIntoViewIfNeeded();

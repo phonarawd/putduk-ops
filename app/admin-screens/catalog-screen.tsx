@@ -24,11 +24,11 @@ const emptyForm = {
   photos: "",
   compositionQty: "1",
   payoutAmount: "",
+  expectedProfitKrwApprox: "",
+  requiredCapitalUsdt: "",
   visibility: "all_public" as ProductVisibility,
   selectedMemberIds: "",
   operatorMemo: "",
-  baseAmount: "",
-  costAmount: "",
 };
 
 function formFromProduct(product: OperatorProduct) {
@@ -38,19 +38,15 @@ function formFromProduct(product: OperatorProduct) {
     photos: product.photos.join("\n"),
     compositionQty: String(product.compositionQty),
     payoutAmount: product.payoutAmount,
+    expectedProfitKrwApprox: product.expectedProfitKrwApprox ?? "",
+    requiredCapitalUsdt: product.requiredCapitalUsdt,
     visibility: product.visibility,
     selectedMemberIds: product.selectedMemberIds.join("\n"),
     operatorMemo: product.priceConfirmationMemo,
-    baseAmount: "",
-    costAmount: "",
   };
 }
 
-function previewLines(
-  persist: ReturnType<typeof persistBodyFromDraft>,
-  extras: { baseAmount: string; costAmount: string },
-  incoming?: unknown,
-) {
+function previewLines(persist: ReturnType<typeof persistBodyFromDraft>, incoming?: unknown) {
   return [
     `이름: ${persist.name}`,
     `구성 수량: ${persist.compositionQty} · 판매 재고 아님`,
@@ -60,14 +56,16 @@ function previewLines(
       : "조건 충족 회원이 동시에 참여할 수 있음",
     persist.description ? `설명: ${persist.description}` : "설명 없음",
     persist.photos.length ? `사진 ${persist.photos.length}장` : "사진 없음",
+    `정산 USDT: ${persist.payoutAmount}`,
+    persist.expectedProfitKrwApprox
+      ? `표시 KRW: ${persist.expectedProfitKrwApprox}`
+      : "표시 KRW: 없음 (보내지 않음)",
+    `필요자본 USDT: ${persist.requiredCapitalUsdt}`,
     ...productMoneyLines(persist, incoming),
     persist.priceConfirmationMemo
       ? `가격 확인 메모(persist): ${persist.priceConfirmationMemo}`
       : "가격 확인 메모 없음",
     "시스템 가격 검증 완료가 아닙니다.",
-    "아래 제안 필드는 서버에 보내지 않아요.",
-    extras.baseAmount.trim() ? `제안 기준 금액: ${extras.baseAmount}` : "제안 기준 금액: 없음",
-    extras.costAmount.trim() ? `제안 비용: ${extras.costAmount}` : "제안 비용: 없음",
     COPY.catalogResellerHidden,
   ].join("\n");
 }
@@ -133,6 +131,8 @@ export function CatalogScreen({
     photos: parsePhotoLines(form.photos),
     compositionQty: form.compositionQty,
     payoutAmount: form.payoutAmount,
+    expectedProfitKrwApprox: form.expectedProfitKrwApprox,
+    requiredCapitalUsdt: form.requiredCapitalUsdt,
     visibility: form.visibility,
     selectedMemberIds: parseMemberIdLines(form.selectedMemberIds),
     priceConfirmationMemo: form.operatorMemo,
@@ -155,7 +155,7 @@ export function CatalogScreen({
   };
 
   const openEdit = (product: OperatorProduct) => {
-    genRef.current += 1;
+    const gen = ++genRef.current;
     setForm(formFromProduct(product));
     setPreview("");
     setError(null);
@@ -165,6 +165,11 @@ export function CatalogScreen({
     setLastProduct(product);
     setRows(null);
     setView("form");
+    void adapter.getProduct(product.id).then((res) => {
+      if (gen !== genRef.current || !res.ok) return;
+      setForm(formFromProduct(res.data));
+      setLastProduct(res.data);
+    });
   };
 
   const backToList = () => {
@@ -183,14 +188,14 @@ export function CatalogScreen({
     }
     setError(null);
     const persist = persistBodyFromDraft(checked.data);
-    setPreview(previewLines(persist, form));
+    setPreview(previewLines(persist));
   };
 
   const applyProduct = (product: OperatorProduct, gen: number) => {
     if (gen !== genRef.current) return;
     setLastProduct(product);
     setKnownId(product.id);
-    setPreview(previewLines(product, form, product));
+    setPreview(previewLines(product, product));
   };
 
   const finishWrite = async (
@@ -328,7 +333,7 @@ export function CatalogScreen({
                   <span className="taskcopy">
                     <b>{product.name}</b>
                     <small>
-                      {visibilityLabelKo(product.visibility)} · 설정 {product.payoutAmount} {product.currency} ·{" "}
+                      {visibilityLabelKo(product.visibility)} · 정산 {product.payoutAmount} {product.currency} ·{" "}
                       {product.id}
                     </small>
                   </span>
@@ -390,18 +395,26 @@ export function CatalogScreen({
               inputMode="numeric"
             />
           </Field>
-          <Field label="설정 지급액 (USDT)" hint={COPY.catalogPayoutHint}>
+          <Field label="정산 USDT" hint={COPY.catalogPayoutHint}>
             <input
               data-testid="catalog-payout"
               value={form.payoutAmount}
               onChange={(e) => setForm({ ...form, payoutAmount: e.target.value })}
             />
           </Field>
-          <Field label="기준 금액 (제안)" hint="CJS persist 필드가 아닙니다. 전송하지 않아요.">
-            <input value={form.baseAmount} onChange={(e) => setForm({ ...form, baseAmount: e.target.value })} />
+          <Field label="표시 KRW" hint={COPY.catalogKrwHint}>
+            <input
+              data-testid="catalog-krw"
+              value={form.expectedProfitKrwApprox}
+              onChange={(e) => setForm({ ...form, expectedProfitKrwApprox: e.target.value })}
+            />
           </Field>
-          <Field label="비용 (제안)" hint="CJS persist 필드가 아닙니다. 전송하지 않아요.">
-            <input value={form.costAmount} onChange={(e) => setForm({ ...form, costAmount: e.target.value })} />
+          <Field label="필요자본 USDT" hint={COPY.catalogCapitalHint}>
+            <input
+              data-testid="catalog-capital"
+              value={form.requiredCapitalUsdt}
+              onChange={(e) => setForm({ ...form, requiredCapitalUsdt: e.target.value })}
+            />
           </Field>
           <Field label="공개 범위" hint="전체 공개가 기본. 선택 공개는 권한이지 독점 예약이 아닙니다.">
             <select
@@ -448,7 +461,7 @@ export function CatalogScreen({
                   targetLabel: checked.ok ? checked.data.name : form.name,
                   currentLabel: "저장 전",
                   nextLabel: checked.ok
-                    ? `${visibilityLabelKo(checked.data.visibility)} · 설정 ${checked.data.payoutAmount} USDT`
+                    ? `${visibilityLabelKo(checked.data.visibility)} · 정산 ${checked.data.payoutAmount} USDT`
                     : "검증 실패",
                   impact:
                     "저장소가 준비되지 않으면 503이며 완료가 아닙니다. 메모는 시스템 검증이 아닙니다. 설정액은 실지급이 아닙니다.",
@@ -475,7 +488,7 @@ export function CatalogScreen({
           </div>
         </div>
         <div className="ops-form">
-          <Field label="상품 번호" hint="단건 조회 API가 없어 목록에서 고른 번호나 이미 아는 UUID만 넣어요.">
+          <Field label="상품 번호" hint="목록에서 고른 번호나 이미 아는 UUID를 넣어요.">
             <input
               data-testid="catalog-known-id"
               value={knownId}

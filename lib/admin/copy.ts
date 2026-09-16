@@ -41,13 +41,17 @@ export const COPY = {
     "가격 확인 메모(priceConfirmationMemo)는 코어 persist 필드입니다. 시스템 가격 검증 완료가 아닙니다. 실 Postgres 컬럼은 아직 없어 저장소 미준비면 적용하지 않아요.",
   catalogConcurrent: "한 회원의 참여가 다른 회원의 같은 상품 참여를 독점으로 잠그지 않아야 합니다.",
   catalogPayoutHint:
-    "설정 지급액(configuredPayoutUsdt)입니다. 예상액·설정액·화면 계산값을 원장 실지급으로 쓰지 않아요.",
+    "정산 USDT(payoutAmount)입니다. 0보다 큰 값을 그대로 보내요. 화면 계산값이나 원장 실지급이 아니에요.",
+  catalogKrwHint:
+    "표시 KRW(expectedProfitKrwApprox)입니다. 비우면 보내지 않아요. 0은 보내지 않아요.",
+  catalogCapitalHint:
+    "필요자본 USDT(requiredCapitalUsdt)입니다. 0보다 큰 값을 그대로 보내요.",
   catalogResellerHidden:
     "리셀러 ID는 서버가 준 resellerId만 표시합니다. 추천 코드·계정 이름·데모 번호로 채우지 않아요. 실DB 조회 검증은 아직 없습니다.",
   resellerUnissued:
     "리셀러 ID 미발급. 서버가 resellerId를 주지 않았어요. 계정 이름·추천 코드로 채우지 않았어요.",
   catalogNoGet:
-    "상품 단건 조회 Admin API는 없습니다. 목록 응답과 방금 저장한 상품 번호로만 수정·공개·참여 조회를 요청합니다.",
+    "상품 한 건은 서버에서 다시 받아 수정합니다. 목록이나 방금 저장한 내용으로도 수정할 수 있어요.",
   catalogSnapshot:
     "기존 참여는 당시 snapshot을 유지합니다. 지금 설정액·공개 범위로 바꾸지 않아요. 저널 없는 금액은 실지급이 아닙니다.",
   catalogIdempotency:

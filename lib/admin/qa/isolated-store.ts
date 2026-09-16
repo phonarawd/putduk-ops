@@ -633,6 +633,14 @@ export function createIsolatedStore() {
         },
       };
     },
+    getProduct(id: string) {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      if (!isUuid(id)) return failure(400, "INVALID_INPUT", "상품 번호는 정확한 식별 값이어야 해요.");
+      const product = products.get(id);
+      if (!product) return failure(404, "NOT_FOUND", "찾을 수 없어요. 다른 대상으로 바꾸지 않았어요.");
+      return { ok: true as const, status: 200, data: product };
+    },
     registerProduct(draft: OperatorProductDraft) {
       const auth = needWrite("userMatchPolicy");
       if (!auth.ok) return auth;
