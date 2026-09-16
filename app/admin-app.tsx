@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  Activity,
   AlertTriangle,
   Check,
   ChevronDown,
@@ -13,7 +12,6 @@ import {
   Menu,
   Package,
   Settings,
-  ShieldCheck,
   Sparkles,
   UserRoundCheck,
   UsersRound,
@@ -26,13 +24,11 @@ import { appPath, navHref } from "../lib/admin-routes";
 import { rememberIsolatedQa, resolveOrigin, type OriginDecision } from "../lib/admin/origin";
 import type { AdminSession } from "../lib/admin/types";
 import { CatalogScreen } from "./admin-screens/catalog-screen";
+import { CmsScreen } from "./admin-screens/cms-screen";
 import {
-  Content,
   Conversation,
   Conversations,
-  DraftUserExtras,
   History,
-  Identity,
   Money,
   Reports,
   Safety,
@@ -41,8 +37,11 @@ import {
   Support,
 } from "./admin-screens/draft-screens";
 import { GradesScreen } from "./admin-screens/grades-screen";
+import { KycQueue } from "./admin-screens/kyc-screen";
 import { LoginScreen } from "./admin-screens/login-screen";
+import { MemberLiveExtras } from "./admin-screens/member-live-extras";
 import { MembershipWorkspace, UsersSearch } from "./admin-screens/membership-screen";
+import { DepositGuideScreen, KrwDepositQueue, WithdrawQueue } from "./admin-screens/money-live-screen";
 import { PresentationScreen } from "./admin-screens/presentation-screen";
 import { QaBanner, WaitBanner } from "./admin-screens/shared";
 
@@ -53,21 +52,18 @@ const groups = [
     href: "/users",
     icon: UsersRound,
     children: [
-      ["회원 찾기", "/users"],
+      ["회원 목록", "/users"],
       ["등급별 하루 기회", "/membership/grades"],
-      ["문의함", "/support"],
-      ["퍼뜩 AI 대화", "/conversations/ai"],
     ],
   },
   {
     label: "돈과 거래",
-    href: "/money/withdrawals",
+    href: "/money/deposit-guide",
     icon: WalletCards,
     children: [
+      ["입금 안내", "/money/deposit-guide"],
       ["입금 확인", "/money/deposits"],
       ["출금 요청", "/money/withdrawals"],
-      ["전체 거래", "/money/transactions"],
-      ["맞지 않는 금액", "/money/mismatches"],
     ],
   },
   { label: "본인 확인", href: "/identity", icon: UserRoundCheck },
@@ -83,39 +79,23 @@ const groups = [
       ["알림 보내기", "/content/messages"],
     ],
   },
+  { label: "화면 진행 시간", href: "/service/display-timing", icon: Settings },
+];
+
+const foldedGroups = [
   {
-    label: "안전 관리",
-    href: "/safety/alerts",
-    icon: ShieldCheck,
-    children: [
-      ["이상한 이용", "/safety/alerts"],
-      ["검토 사건", "/safety/cases"],
-      ["차단 목록", "/safety/lists"],
-      ["이용 한도", "/safety/limits"],
-    ],
-  },
-  { label: "운영 현황", href: "/reports", icon: Activity },
-  {
-    label: "직원과 기록",
-    href: "/staff",
+    label: "아직 안 쓰는 메뉴",
+    href: "/support",
     icon: ClipboardCheck,
     children: [
+      ["문의함", "/support"],
+      ["퍼뜩 AI 대화", "/conversations/ai"],
+      ["전체 거래", "/money/transactions"],
+      ["맞지 않는 금액", "/money/mismatches"],
+      ["이상한 이용", "/safety/alerts"],
+      ["운영 현황", "/reports"],
       ["직원", "/staff"],
-      ["승인 요청", "/staff/approvals"],
       ["작업 기록", "/activity"],
-      ["열람 기록", "/activity/access"],
-    ],
-  },
-  {
-    label: "서비스 설정",
-    href: "/service",
-    icon: Settings,
-    children: [
-      ["서비스 상태", "/service"],
-      ["화면 진행 시간", "/service/display-timing"],
-      ["진행 중인 문제", "/service/incidents"],
-      ["점검 일정", "/service/maintenance"],
-      ["기능 켜기·끄기", "/service/controls"],
     ],
   },
 ];
@@ -160,6 +140,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(null);
   const [filter, setFilter] = useState("전체");
+  const [foldOpen, setFoldOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
 
@@ -204,11 +185,12 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
     return <main className="auth-loading">로그인 화면으로 이동 중…</main>;
   }
 
+  const navGroups = [...groups, ...foldedGroups];
   const known = isKnownRoute(route);
   const active =
-    groups.find((g) => route === g.href || g.children?.some(([, h]) => route === h || (h !== "/" && route.startsWith(`${h}/`)))) ||
+    navGroups.find((g) => route === g.href || g.children?.some(([, h]) => route === h || (h !== "/" && route.startsWith(`${h}/`)))) ||
     (known ? groups[0] : { label: "없는 화면", href: route, icon: LayoutDashboard });
-  const all = [...groups.flatMap((g) => [...(g.children || []), [g.label, g.href]])];
+  const all = [...navGroups.flatMap((g) => [...(g.children || []), [g.label, g.href]])];
   const title = (all.find(([, h]) => h === route)?.[0] ||
     (route.startsWith("/users/")
       ? "회원 기회·등급"
@@ -273,6 +255,51 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
               </div>
             );
           })}
+          <button
+            type="button"
+            className="fold-toggle"
+            data-testid="fold-toggle"
+            onClick={() => setFoldOpen((v) => !v)}
+          >
+            {foldOpen ? "아직 안 쓰는 메뉴 접기" : "아직 안 쓰는 메뉴"}
+          </button>
+          {foldOpen
+            ? foldedGroups.map((g) => {
+                const I = g.icon;
+                const on = active.label === g.label;
+                return (
+                  <div key={g.label}>
+                    <Link
+                      className={on ? "on" : ""}
+                      href={navHref(g.href)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        go(g.href);
+                      }}
+                    >
+                      <I />
+                      <span>{g.label}</span>
+                      {g.children ? <ChevronDown /> : null}
+                    </Link>
+                    <div className="sub">
+                      {g.children.map(([l, h]) => (
+                        <Link
+                          key={h}
+                          className={route === h ? "on" : ""}
+                          href={navHref(h)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            go(h);
+                          }}
+                        >
+                          {l}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            : null}
         </nav>
         <div className="me">
           <span>{who.name[0] ?? "운"}</span>
@@ -341,7 +368,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
           {route.startsWith("/users/") ? (
             <>
               <MembershipWorkspace key={userId} userId={userId} adapter={adapter} notify={notify} />
-              <DraftUserExtras />
+              <MemberLiveExtras key={`${userId}-live`} userId={userId} adapter={adapter} />
             </>
           ) : null}
           {route === "/membership/grades" ? <GradesScreen adapter={adapter} notify={notify} /> : null}
@@ -349,9 +376,16 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             <Conversations q={query} setQ={setQuery} filter={filter} setFilter={setFilter} />
           ) : null}
           {route.startsWith("/conversations/ai/") ? <Conversation /> : null}
-          {route.startsWith("/money/") ? <Money route={route} /> : null}
-          {route === "/identity" ? <Identity /> : null}
-          {route.startsWith("/content/") ? <Content route={route} /> : null}
+          {route === "/money/deposit-guide" ? <DepositGuideScreen adapter={adapter} notify={notify} /> : null}
+          {route === "/money/deposits" ? <KrwDepositQueue adapter={adapter} notify={notify} /> : null}
+          {route === "/money/withdrawals" ? <WithdrawQueue adapter={adapter} notify={notify} /> : null}
+          {route === "/money/transactions" || route === "/money/mismatches" ? <Money route={route} /> : null}
+          {route === "/identity" ? <KycQueue adapter={adapter} notify={notify} /> : null}
+          {route === "/content/notices" ? <CmsScreen kind="notice" adapter={adapter} notify={notify} /> : null}
+          {route === "/content/events" ? <CmsScreen kind="event" adapter={adapter} notify={notify} /> : null}
+          {route === "/content/benefits" ? <CmsScreen kind="benefit" adapter={adapter} notify={notify} /> : null}
+          {route === "/content/banners" ? <CmsScreen kind="banner" adapter={adapter} notify={notify} /> : null}
+          {route === "/content/messages" ? <CmsScreen kind="notification" adapter={adapter} notify={notify} /> : null}
           {route.startsWith("/safety/") ? <Safety route={route} /> : null}
           {route === "/reports" ? <Reports /> : null}
           {route.startsWith("/support") ? <Support /> : null}
@@ -385,21 +419,22 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
 function description(r: string) {
   if (!isKnownRoute(r)) return COPY.missingRoute;
   if (r === "/" || r === "/catalog") return "상품 이름과 세 가지 금액, 공개 범위만 보면 됩니다.";
-  if (r === "/users") return "회원 번호로 한 명만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.";
-  if (r.startsWith("/users/")) return "하루 기회, 추가 지급, 등급만 바꿉니다. 서버가 확인한 결과만 완료입니다.";
+  if (r === "/users") return "최근 가입 회원부터 보여 줍니다. 번호로 한 명만 찾을 수도 있어요.";
+  if (r.startsWith("/users/")) return "하루 기회, 추가 지급, 등급, 이 회원 USDT 주소만 다룹니다. 서버가 확인한 결과만 완료입니다.";
   if (r === "/membership/grades") return "등급마다 하루 기본 기회를 정합니다. 이미 따로 지정된 회원은 그대로 둡니다.";
   if (r === "/support") return "전체 문의함은 아직 없습니다. 회원을 먼저 찾아 주세요.";
   if (r === "/conversations/ai" || r.startsWith("/conversations/ai/")) return "실제 대화는 권한이 확인되기 전에는 열지 않아요.";
-  if (r === "/money/deposits") return "입금 확인 목록이 아직 연결되지 않았어요.";
-  if (r === "/money/withdrawals") return "출금 요청이 아직 연결되지 않았어요.";
+  if (r === "/money/deposit-guide") return "은행 이름·계좌·예금주는 직접 적습니다. 가짜 숫자를 채워 두지 않아요.";
+  if (r === "/money/deposits") return "대기 중인 원 입금만 확인하고 거절합니다. 환율 칸은 없습니다.";
+  if (r === "/money/withdrawals") return "대기 중인 출금만 승인·거절합니다.";
   if (r === "/money/transactions") return "거래 내역이 아직 연결되지 않았어요.";
   if (r === "/money/mismatches") return "맞지 않는 금액 목록이 아직 연결되지 않았어요.";
-  if (r === "/identity") return "본인 확인 대기함이 아직 연결되지 않았어요.";
-  if (r === "/content/notices") return "공지사항 작성이 아직 연결되지 않았어요.";
-  if (r === "/content/events") return "이벤트 등록이 아직 연결되지 않았어요.";
-  if (r === "/content/benefits") return "혜택 관리가 아직 연결되지 않았어요.";
-  if (r === "/content/banners") return "배너 관리가 아직 연결되지 않았어요.";
-  if (r === "/content/messages") return "알림 보내기가 아직 연결되지 않았어요.";
+  if (r === "/identity") return "대기 중인 본인 확인만 통과·거절합니다.";
+  if (r === "/content/notices") return "공지를 초안으로 저장하고 게시·게시종료합니다.";
+  if (r === "/content/events") return "이벤트를 초안으로 저장하고 게시·게시종료합니다.";
+  if (r === "/content/benefits") return "혜택을 초안으로 저장하고 게시·게시종료합니다.";
+  if (r === "/content/banners") return "배너를 초안으로 저장하고 게시·게시종료합니다.";
+  if (r === "/content/messages") return "알림 글을 초안으로 저장하고 게시·게시종료합니다.";
   if (r === "/safety/alerts") return "이상한 이용 알림이 아직 연결되지 않았어요.";
   if (r === "/safety/cases") return "검토 사건이 아직 연결되지 않았어요.";
   if (r === "/safety/lists") return "차단 목록이 아직 연결되지 않았어요.";
@@ -435,6 +470,7 @@ const KNOWN_EXACT = new Set([
   "/service/incidents",
   "/service/maintenance",
   "/service/controls",
+  "/money/deposit-guide",
 ]);
 
 const KNOWN_PREFIX = ["/users/", "/conversations/ai/", "/money/", "/content/", "/safety/"];

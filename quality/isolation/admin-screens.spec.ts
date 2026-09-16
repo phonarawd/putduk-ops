@@ -81,6 +81,42 @@ test.describe("isolated-qa screens @mock", () => {
     await expect(page.locator("body")).not.toContainText("AI-8821");
   });
 
+  test("회원 목록 표가 있다", async ({ page }) => {
+    await loginIsolated(page, "/users");
+    await expect(page.getByTestId("page-title")).toHaveText("회원 목록");
+    await expect(page.getByTestId("member-table")).toBeVisible();
+    await expect(page.getByTestId("users-q")).toBeVisible();
+    await expect(page.getByTestId("users-lookup")).toBeVisible();
+  });
+
+  test("입금 안내에 가짜 계좌가 없다", async ({ page }) => {
+    await loginIsolated(page, "/money/deposit-guide");
+    await expect(page.getByTestId("deposit-guide")).toBeVisible();
+    await expect(page.getByTestId("deposit-account-number")).toHaveValue("");
+    await expect(page.getByTestId("deposit-bank-name")).toHaveValue("");
+  });
+
+  test("아직 안 쓰는 메뉴는 접혀 있다", async ({ page }) => {
+    await loginIsolated(page, "/");
+    await expect(page.getByTestId("fold-toggle")).toBeVisible();
+    await expect(page.getByRole("link", { name: "문의함" })).toHaveCount(0);
+    await page.getByTestId("fold-toggle").click();
+    await expect(page.getByRole("link", { name: "문의함" })).toBeVisible();
+  });
+
+  test("CMS 초안을 게시하고 종료한다", async ({ page }) => {
+    await loginIsolated(page, "/content/notices");
+    await expect(page.getByTestId("cms-screen")).toBeVisible();
+    await page.getByTestId("cms-title").fill("격리 시험 공지입니다");
+    await page.getByTestId("cms-body").fill("본문");
+    await page.getByTestId("cms-create").click();
+    await expect(page.getByTestId("cms-table")).toBeVisible();
+    await page.locator("[data-testid^='cms-publish-']").first().click();
+    await expect(page.getByTestId("admin-toast")).toHaveAttribute("data-ok", "true");
+    await page.locator("[data-testid^='cms-end-']").first().click();
+    await expect(page.getByTestId("admin-toast")).toHaveAttribute("data-ok", "true");
+  });
+
   test("UUID 조회 404는 다른 회원으로 바꾸지 않는다", async ({ page }) => {
     await loginIsolated(page, "/users");
     await page.getByTestId("users-q").fill(QA_USERS.missing);

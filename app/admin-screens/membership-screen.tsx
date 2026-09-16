@@ -16,7 +16,6 @@ import {
   ResultBanner,
   Stat,
   UnknownStat,
-  WaitBanner,
   formatCount,
   newIdempotencyKey,
 } from "./shared";
@@ -31,7 +30,18 @@ export function UsersSearch({
   const [value, setValue] = useState(lastId ?? "");
   const [busy, setBusy] = useState(false);
   const [lookup, setLookup] = useState<AdminResult<unknown> | null>(null);
+  const [rows, setRows] = useState<import("../../lib/admin/types").MemberListItem[] | null>(null);
   const origin = resolveOrigin();
+  useEffect(() => {
+    let alive = true;
+    void adapter.listUsers().then((res) => {
+      if (!alive) return;
+      setRows(res.ok ? res.data.items : []);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [adapter]);
   const go = async () => {
     const id = value.trim();
     if (!isUuid(id) || busy) return;
@@ -59,10 +69,47 @@ export function UsersSearch({
     <section className="panel">
       <div className="panelhead">
         <div>
-          <h2>정확한 회원 찾기</h2>
+          <h2>회원 목록</h2>
           <p>{COPY.usersSearchHelp}</p>
         </div>
       </div>
+      {rows == null ? (
+        <p className="ops-hint">회원 목록을 불러오는 중…</p>
+      ) : rows.length === 0 ? (
+        <div className="empty-box" data-testid="member-table-empty">
+          <b>아직 회원이 없어요</b>
+          <p>가짜 회원을 채워 두지 않았어요.</p>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table data-testid="member-table">
+            <thead>
+              <tr>
+                <th>가입 시각</th>
+                <th>이름</th>
+                <th>등급</th>
+                <th>가입 IP</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.userId}>
+                  <td>{row.createdAt ? new Date(row.createdAt).toLocaleString("ko-KR") : "없음"}</td>
+                  <td>{row.username || row.emailMasked || row.userId.slice(0, 8)}</td>
+                  <td>{row.membership ? MEMBERSHIP_LABEL_KO[row.membership] : "없음"}</td>
+                  <td>{row.signupIp || "없음"}</td>
+                  <td>
+                    <a className="textbtn" href={navHref(`/users/${row.userId}`)}>
+                      보기
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <ResultBanner result={lookup && !lookup.ok ? lookup : null} />
       <div className="ops-form">
         <Field label="회원 번호" hint="한 명만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.">
@@ -86,7 +133,7 @@ export function UsersSearch({
           {busy ? "찾는 중…" : "이 회원 보기"}
         </button>
         {!value.trim() ? (
-          <p className="ops-hint">빈칸으로는 회원 목록을 만들지 않아요. 아직 찾지 않았습니다.</p>
+          <p className="ops-hint">번호로 찾을 때는 정확한 회원 식별 값을 넣으세요.</p>
         ) : isUuid(value.trim()) ? null : (
           <p className="ops-hint">형식이 맞지 않아요. 첫 번째 회원으로 바꾸지 않았어요.</p>
         )}
@@ -132,7 +179,7 @@ export function UsersSearch({
           </div>
         </div>
       ) : (
-        <WaitBanner>{COPY.usersSearchHelp} 전체 회원 목록은 아직 없습니다.</WaitBanner>
+        <p className="ops-hint">{COPY.usersSearchHelp}</p>
       )}
     </section>
   );

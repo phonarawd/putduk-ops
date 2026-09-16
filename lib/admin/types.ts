@@ -1,4 +1,4 @@
-import type { AdminRole, MembershipId, ProductVisibility } from "./contract.ts";
+import type { AdminRole, CmsKind, MembershipId, ProductVisibility } from "./contract.ts";
 import type { AdminResult } from "./errors.ts";
 import type { MoneyAuthority } from "./money-authority.ts";
 import type { PresentationListing, PresentationProfile } from "./presentation.ts";
@@ -129,6 +129,114 @@ export type DirectoryLookup = {
   resellerId?: string | null;
 };
 
+export type MemberListItem = {
+  userId: string;
+  createdAt: string | null;
+  username: string | null;
+  status: string | null;
+  emailMasked: string | null;
+  phoneMasked: string | null;
+  resellerId: string | null;
+  membership: MembershipId | null;
+  signupIp: string | null;
+};
+
+export type MemberProfile = MemberListItem & {
+  profile: {
+    displayName: string | null;
+    declaredName: string | null;
+    onboardingStage: string | null;
+    birthDate: string | null;
+  } | null;
+};
+
+export type MemberDepositAddress = {
+  userId: string;
+  trc20Address: string;
+  qrPayload: string;
+};
+
+export type DepositConfigView = {
+  configVersion: number;
+  krw: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    noticeKo: string;
+    krwWithdrawFeeKrw: number;
+  };
+  usdtOnchain: {
+    network: "TRC20";
+    tronGridBaseUrl: string;
+    hotWalletXpubRef: string;
+    treasuryHotAddressRef: string;
+    energyDelegateEnabled: boolean;
+    usdtWithdrawNetworkFeeUsdt: string;
+    minTrxStakeForSweeper: string;
+    sweeperPaused: boolean;
+  };
+  withdrawGuards: { minHoldingHours: number };
+  pricingGuards: { priceStaleMaxSec: number; requireMinProfitUsdt: true };
+  updatedAt?: string;
+};
+
+export type DepositConfigPatchBody = {
+  changeReason: string;
+  krw: DepositConfigView["krw"];
+  usdtOnchain: {
+    tronGridBaseUrl: string;
+    hotWalletXpubRef: string;
+    treasuryHotAddressRef: string;
+    energyDelegateEnabled: boolean;
+    usdtWithdrawNetworkFeeUsdt: string;
+    minTrxStakeForSweeper: string;
+    sweeperPaused: boolean;
+  };
+  withdrawGuards: { minHoldingHours: number };
+  pricingGuards: { priceStaleMaxSec: number };
+};
+
+export type KrwDepositItem = {
+  id: string;
+  userId: string;
+  requestedAmountKrw: number;
+  payableAmountKrw?: number;
+  depositorName: string;
+  status: string;
+  createdAt: string;
+};
+
+export type WithdrawIntentItem = {
+  id: string;
+  userId: string;
+  amountUsdt: string;
+  asset: string;
+  status: string;
+  destination: string | null;
+  createdAt: string;
+};
+
+export type KycQueueItem = {
+  submissionId: string;
+  userId: string;
+  legalName: string;
+  status: string;
+  createdAt: string;
+};
+
+export type CmsPost = {
+  id: string;
+  kind: CmsKind;
+  status: "draft" | "published" | "ended";
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  publishedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProductWriteResult = {
   product: OperatorProduct;
 } & WriteMeta;
@@ -160,6 +268,41 @@ export type AdminOpsPort = {
   login(email: string, password: string): Promise<AdminResult<AdminSession>>;
   logout(): Promise<AdminResult<{ connected: false }>>;
   lookupUser(userId: string): Promise<AdminResult<DirectoryLookup>>;
+  listUsers(cursor?: string): Promise<AdminResult<{ items: MemberListItem[]; nextCursor: string | null }>>;
+  getUserProfile(userId: string): Promise<AdminResult<{ item: MemberProfile }>>;
+  getUserDepositAddress(userId: string): Promise<AdminResult<MemberDepositAddress>>;
+  getDepositConfig(): Promise<AdminResult<DepositConfigView>>;
+  patchDepositConfig(body: DepositConfigPatchBody): Promise<AdminResult<DepositConfigView>>;
+  listKrwDeposits(status?: string): Promise<AdminResult<{ items: KrwDepositItem[] }>>;
+  decideKrwDeposit(
+    id: string,
+    decision: "approve" | "reject",
+    body: { reason?: string; idempotencyKey: string },
+  ): Promise<AdminResult<{ ok: true }>>;
+  listWithdrawIntents(): Promise<AdminResult<{ items: WithdrawIntentItem[] }>>;
+  decideWithdraw(
+    id: string,
+    decision: "approve" | "reject",
+    body: { reason: string; idempotencyKey: string },
+  ): Promise<AdminResult<{ ok: true }>>;
+  listKyc(status?: string): Promise<AdminResult<{ items: KycQueueItem[] }>>;
+  decideKyc(
+    userId: string,
+    decision: "approve" | "reject",
+    body: { reason?: string; idempotencyKey: string },
+  ): Promise<AdminResult<{ ok: true }>>;
+  listCms(kind: CmsKind): Promise<AdminResult<{ items: CmsPost[] }>>;
+  createCms(
+    kind: CmsKind,
+    body: { title: string; body: string; imageUrl?: string },
+  ): Promise<AdminResult<{ item: CmsPost }>>;
+  patchCms(
+    kind: CmsKind,
+    id: string,
+    body: { title: string; body: string; imageUrl?: string },
+  ): Promise<AdminResult<{ item: CmsPost }>>;
+  publishCms(kind: CmsKind, id: string): Promise<AdminResult<{ item: CmsPost }>>;
+  endCms(kind: CmsKind, id: string): Promise<AdminResult<{ item: CmsPost }>>;
   getMembership(userId: string): Promise<AdminResult<MembershipSnapshot>>;
   putDailyMatchCap(
     userId: string,

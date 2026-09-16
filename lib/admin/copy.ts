@@ -22,7 +22,7 @@ export const COPY = {
   catalogListEmpty: "아직 등록된 상품이 없어요. 오른쪽 위 「상품 등록」을 눌러 주세요.",
   catalogListUnavailable: "상품 목록을 확인할 수 없습니다. 추측 목록으로 채우지 않았어요.",
   catalogListLoading: "상품 목록을 불러오는 중…",
-  usersSearchHelp: "회원 번호 한 건만 찾습니다. 빈칸으로 목록을 만들지 않아요.",
+  usersSearchHelp: "가입 시각이 최근인 회원부터 보여 줍니다. 번호로 한 명만 찾을 수도 있어요.",
   usersNoFallback: "없는 회원은 다른 회원으로 바꾸지 않아요.",
   capHelp: "하루 기본 기회만 바꿉니다. 최소 이익·엄격함·자본은 건드리지 않아요.",
   bonusHelp: "추가 기회는 0회 차단이나 이용 정지를 풀어 주지 않아요.",
@@ -47,4 +47,7 @@ export const COPY = {
     "상품 등록은 결과가 불명확하면 새로 등록한 것으로 보지 말고, 같은 내용으로 다시 확인만 하세요.",
   moneyNotPaid: "지급 완료 아님. 원장 기록과 실지급액이 함께 있을 때만 완료입니다.",
   financeDryRun: "입출금·원장 쓰기는 아직 이 화면에 연결되지 않아 실제 돈을 바꾸지 않아요.",
+  depositGuideHelp: "은행 이름·계좌·예금주는 직접 적습니다. 가짜 숫자를 채워 두지 않아요.",
+  memberUsdtHelp: "이 회원에게 이미 발급된 TRC20만 보여 줍니다. 없는 주소는 만들지 않아요.",
+  cmsHelp: "초안으로 저장한 뒤 게시하고, 끝나면 게시종료합니다. 손님 화면에는 게시 중만 보입니다.",
 } as const;

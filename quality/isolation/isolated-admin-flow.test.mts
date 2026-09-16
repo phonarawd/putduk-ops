@@ -173,7 +173,7 @@ assert.equal(LEGACY_DOCUMENTED_PATHS.adminAuthLogin.includes("admin-auth/login")
 assert.equal(CURRENT_CONTRACT_PATHS.adminSessionLogin.includes("admin-session/login"), true);
 assert.equal(CONTRACT_ACTIVATION.adminSessionLogin, "BLOCKED");
 assert.equal(CURRENT_CONTRACT_PATHS.adminUsersUuidLookup.includes("/admin/users?q="), true);
-assert.equal(CONTRACT_ACTIVATION.adminUsersPaginatedList, "BLOCKED");
+assert.equal(CONTRACT_ACTIVATION.adminUsersPaginatedList, "live");
 assert.equal(MEMBERSHIP_ADMIN_ROUTES.membership("x").includes("/me/membership"), false);
 pass("me/membership is not used as admin list");
 
@@ -192,6 +192,24 @@ assert.equal(missingLookup.ok, false);
 if (!missingLookup.ok) assert.equal(missingLookup.code, "NOT_FOUND");
 const exactLookup = unreadyStore.lookupUser(QA_USERS.explicit8);
 assert.equal(exactLookup.ok, true);
+unreadyStore.login("qa-super");
+const listedMembers = unreadyStore.listUsers();
+assert.equal(listedMembers.ok, true);
+if (listedMembers.ok) {
+  assert.equal(listedMembers.data.items.some((row) => row.userId === QA_USERS.explicit8), true);
+  assert.equal(listedMembers.data.items.some((row) => row.userId === QA_USERS.missing), false);
+}
+const cmsDraft = unreadyStore.createCms("notice", { title: "운영 공지 초안입니다", body: "본문" });
+assert.equal(cmsDraft.ok, true);
+if (cmsDraft.ok) {
+  const published = unreadyStore.publishCms("notice", cmsDraft.data.item.id);
+  assert.equal(published.ok, true);
+  if (published.ok) assert.equal(published.data.item.status, "published");
+  const ended = unreadyStore.endCms("notice", cmsDraft.data.item.id);
+  assert.equal(ended.ok, true);
+  if (ended.ok) assert.equal(ended.data.item.status, "ended");
+}
+pass("member list and cms publish/end");
 if (exactLookup.ok) {
   assert.equal(exactLookup.data.userId, QA_USERS.explicit8);
   assert.equal(exactLookup.data.substituted, false);

@@ -1,10 +1,14 @@
 import {
   MEMBERSHIP_ADMIN_ROUTES,
   ADMIN_SESSION_ROUTES,
+  CMS_ADMIN_ROUTES,
+  COMPLIANCE_ADMIN_ROUTES,
   MALL_ADMIN_ROUTES,
+  WALLET_ADMIN_ROUTES,
   isMembershipId,
   isUuid,
   sameUserId,
+  type CmsKind,
 } from "./contract.ts";
 import { adminFetch, unwrapApplied } from "./client.ts";
 import {
@@ -30,14 +34,22 @@ import type {
   AdminSession,
   BonusGrant,
   BonusList,
+  CmsPost,
   DailyMatchQuota,
+  DepositConfigView,
   DirectoryLookup,
   GradeDailyCaps,
+  KycQueueItem,
+  KrwDepositItem,
+  MemberDepositAddress,
+  MemberListItem,
+  MemberProfile,
   MembershipSnapshot,
   ParticipationRow,
   ProductListResult,
   ProductWriteResult,
   UserMembership,
+  WithdrawIntentItem,
   WriteMeta,
 } from "./types.ts";
 
@@ -194,6 +206,95 @@ function writeFlags(body: unknown): WriteMeta {
   };
 }
 
+function readMemberListItem(raw: unknown): MemberListItem | null {
+  const rec = asRecord(raw);
+  if (!rec) return null;
+  const userId = readString(rec.userId);
+  if (!userId || !isUuid(userId)) return null;
+  const membershipRaw = readString(rec.membership);
+  return {
+    userId,
+    createdAt: readString(rec.createdAt),
+    username: readString(rec.username),
+    status: readString(rec.status),
+    emailMasked: readString(rec.emailMasked),
+    phoneMasked: readString(rec.phoneMasked),
+    resellerId: readString(rec.resellerId),
+    membership: membershipRaw && isMembershipId(membershipRaw) ? membershipRaw : null,
+    signupIp: readString(rec.signupIp),
+  };
+}
+
+function readCmsPost(raw: unknown, kind: CmsKind): CmsPost | null {
+  const rec = asRecord(raw);
+  if (!rec) return null;
+  const id = readString(rec.id);
+  const status = readString(rec.status);
+  const title = readString(rec.title);
+  if (!id || !title || (status !== "draft" && status !== "published" && status !== "ended")) return null;
+  return {
+    id,
+    kind,
+    status,
+    title,
+    body: typeof rec.body === "string" ? rec.body : "",
+    imageUrl: readString(rec.imageUrl),
+    publishedAt: readString(rec.publishedAt),
+    endedAt: readString(rec.endedAt),
+    createdAt: readString(rec.createdAt) ?? "",
+    updatedAt: readString(rec.updatedAt) ?? "",
+  };
+}
+
+function readDepositConfig(raw: unknown): DepositConfigView | null {
+  const rec = asRecord(raw);
+  if (!rec) return null;
+  const krw = asRecord(rec.krw);
+  const usdt = asRecord(rec.usdtOnchain);
+  const wg = asRecord(rec.withdrawGuards);
+  const pg = asRecord(rec.pricingGuards);
+  const configVersion = readFiniteInt(rec.configVersion);
+  if (!krw || !usdt || !wg || !pg || configVersion == null) return null;
+  const bankName = readString(krw.bankName);
+  const accountNumber = readString(krw.accountNumber);
+  const accountHolder = readString(krw.accountHolder);
+  if (!bankName || !accountNumber || !accountHolder) return null;
+  const fee = readFiniteInt(krw.krwWithdrawFeeKrw);
+  const hours = readFiniteInt(wg.minHoldingHours);
+  const stale = readFiniteInt(pg.priceStaleMaxSec);
+  const trongrid = readString(usdt.tronGridBaseUrl);
+  const xpub = readString(usdt.hotWalletXpubRef);
+  const treasury = readString(usdt.treasuryHotAddressRef);
+  const netFee = readString(usdt.usdtWithdrawNetworkFeeUsdt);
+  const minTrx = readString(usdt.minTrxStakeForSweeper);
+  if (fee == null || hours == null || stale == null || !trongrid || !xpub || !treasury || !netFee || !minTrx) {
+    return null;
+  }
+  return {
+    configVersion,
+    krw: {
+      bankName,
+      accountNumber,
+      accountHolder,
+      noticeKo: typeof krw.noticeKo === "string" ? krw.noticeKo : "",
+      krwWithdrawFeeKrw: fee,
+    },
+    usdtOnchain: {
+      network: "TRC20",
+      tronGridBaseUrl: trongrid,
+      hotWalletXpubRef: xpub,
+      treasuryHotAddressRef: treasury,
+      energyDelegateEnabled: usdt.energyDelegateEnabled === true,
+      usdtWithdrawNetworkFeeUsdt: netFee,
+      minTrxStakeForSweeper: minTrx,
+      sweeperPaused: usdt.sweeperPaused === true,
+    },
+    withdrawGuards: { minHoldingHours: hours },
+    pricingGuards: { priceStaleMaxSec: stale, requireMinProfitUsdt: true },
+    updatedAt: readString(rec.updatedAt) ?? undefined,
+  };
+}
+
 export function createLiveAdapter(): AdminOpsPort {
   return {
     async session() {
@@ -261,6 +362,223 @@ export function createLiveAdapter(): AdminOpsPort {
           ...(resellerId ? { resellerId } : {}),
         },
       } satisfies { ok: true; status: number; data: DirectoryLookup };
+    },
+    async listUsers(cursor) {
+      const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+      const res = await adminFetch<unknown>("GET", `${MEMBERSHIP_ADMIN_ROUTES.directory}${qs}`);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items) ? rec.items : [];
+      const items: MemberListItem[] = [];
+      for (const raw of rawItems) {
+        const item = readMemberListItem(raw);
+        if (item) items.push(item);
+      }
+      return {
+        ok: true,
+        status: res.status,
+        data: { items, nextCursor: readString(rec?.nextCursor) },
+      };
+    },
+    async getUserProfile(userId) {
+      if (!isUuid(userId)) return failure(400, "INVALID_INPUT", "회원 번호는 정확한 회원 식별 값이어야 해요.");
+      const res = await adminFetch<unknown>("GET", MEMBERSHIP_ADMIN_ROUTES.profile(userId));
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const item = readMemberListItem(rec?.item ?? rec);
+      if (!item || !sameUserId(item.userId, userId)) return unknownUnavailable();
+      const profileRec = asRecord(asRecord(rec?.item)?.profile ?? rec?.profile);
+      const profile = profileRec
+        ? {
+            displayName: readString(profileRec.displayName),
+            declaredName: readString(profileRec.declaredName),
+            onboardingStage: readString(profileRec.onboardingStage),
+            birthDate: readString(profileRec.birthDate),
+          }
+        : null;
+      return { ok: true, status: res.status, data: { item: { ...item, profile } satisfies MemberProfile } };
+    },
+    async getUserDepositAddress(userId) {
+      if (!isUuid(userId)) return failure(400, "INVALID_INPUT", "회원 번호는 정확한 회원 식별 값이어야 해요.");
+      const res = await adminFetch<unknown>("GET", WALLET_ADMIN_ROUTES.userDepositAddress(userId));
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const foundId = readString(rec?.userId);
+      const trc20Address = readString(rec?.trc20Address);
+      const qrPayload = readString(rec?.qrPayload) ?? trc20Address;
+      if (!foundId || !trc20Address || !sameUserId(foundId, userId)) return unknownUnavailable();
+      return {
+        ok: true,
+        status: res.status,
+        data: { userId: foundId, trc20Address, qrPayload: qrPayload ?? trc20Address } satisfies MemberDepositAddress,
+      };
+    },
+    async getDepositConfig() {
+      const res = await adminFetch<unknown>("GET", WALLET_ADMIN_ROUTES.depositConfig);
+      if (!res.ok) return res;
+      const parsed = readDepositConfig(res.data);
+      if (!parsed) return unknownUnavailable();
+      return { ok: true, status: res.status, data: parsed };
+    },
+    async patchDepositConfig(body) {
+      const res = await adminFetch<unknown>("PATCH", WALLET_ADMIN_ROUTES.depositConfig, body);
+      if (!res.ok) return res;
+      const parsed = readDepositConfig(res.data);
+      if (!parsed) return unknownUnavailable();
+      return { ok: true, status: res.status, data: parsed };
+    },
+    async listKrwDeposits(status) {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+      const res = await adminFetch<unknown>("GET", `${WALLET_ADMIN_ROUTES.krwDepositRequests}${qs}`);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items) ? rec.items : Array.isArray(res.data) ? res.data : [];
+      const items: KrwDepositItem[] = [];
+      for (const raw of rawItems) {
+        const row = asRecord(raw);
+        const id = readString(row?.id);
+        const userId = readString(row?.userId);
+        if (!id || !userId) continue;
+        items.push({
+          id,
+          userId,
+          requestedAmountKrw: readFiniteInt(row?.requestedAmountKrw) ?? 0,
+          payableAmountKrw: readFiniteInt(row?.payableAmountKrw) ?? undefined,
+          depositorName: readString(row?.depositorName) ?? "",
+          status: readString(row?.status) ?? "",
+          createdAt: readString(row?.createdAt) ?? "",
+        });
+      }
+      return { ok: true, status: res.status, data: { items } };
+    },
+    async decideKrwDeposit(id, decision, body) {
+      const path =
+        decision === "approve" ? WALLET_ADMIN_ROUTES.krwDepositApprove(id) : WALLET_ADMIN_ROUTES.krwDepositReject(id);
+      const payload =
+        decision === "approve"
+          ? { idempotencyKey: body.idempotencyKey }
+          : { idempotencyKey: body.idempotencyKey, reason: body.reason ?? "" };
+      const res = await adminFetch<unknown>("POST", path, payload);
+      if (!res.ok) return res;
+      return { ok: true, status: res.status, data: { ok: true as const } };
+    },
+    async listWithdrawIntents() {
+      const res = await adminFetch<unknown>("GET", WALLET_ADMIN_ROUTES.withdrawReviewList);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items) ? rec.items : [];
+      const items: WithdrawIntentItem[] = [];
+      for (const raw of rawItems) {
+        const row = asRecord(raw);
+        const id = readString(row?.id);
+        const userId = readString(row?.userId);
+        if (!id || !userId) continue;
+        items.push({
+          id,
+          userId,
+          amountUsdt: readString(row?.amountUsdt) ?? "",
+          asset: readString(row?.asset) ?? "",
+          status: readString(row?.status) ?? "",
+          destination: readString(row?.destination),
+          createdAt: readString(row?.createdAt) ?? "",
+        });
+      }
+      return { ok: true, status: res.status, data: { items } };
+    },
+    async decideWithdraw(id, decision, body) {
+      const path =
+        decision === "approve"
+          ? WALLET_ADMIN_ROUTES.withdrawReviewApprove(id)
+          : WALLET_ADMIN_ROUTES.withdrawReviewReject(id);
+      const res = await adminFetch<unknown>("POST", path, {
+        reason: body.reason,
+        idempotencyKey: body.idempotencyKey,
+      });
+      if (!res.ok) return res;
+      return { ok: true, status: res.status, data: { ok: true as const } };
+    },
+    async listKyc(status) {
+      const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+      const res = await adminFetch<unknown>("GET", `${COMPLIANCE_ADMIN_ROUTES.kycQueue}${qs}`);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items)
+        ? rec.items
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+      const items: KycQueueItem[] = [];
+      for (const raw of rawItems) {
+        const row = asRecord(raw);
+        const submissionId = readString(row?.submissionId) ?? readString(row?.id);
+        const userId = readString(row?.userId);
+        if (!submissionId || !userId) continue;
+        items.push({
+          submissionId,
+          userId,
+          legalName: readString(row?.legalName) ?? "",
+          status: readString(row?.status) ?? "",
+          createdAt: readString(row?.createdAt) ?? "",
+        });
+      }
+      return { ok: true, status: res.status, data: { items } };
+    },
+    async decideKyc(userId, decision, body) {
+      if (!isUuid(userId)) return failure(400, "INVALID_INPUT", "회원 번호는 정확한 회원 식별 값이어야 해요.");
+      const path =
+        decision === "approve"
+          ? COMPLIANCE_ADMIN_ROUTES.kycApprove(userId)
+          : COMPLIANCE_ADMIN_ROUTES.kycReject(userId);
+      const res = await adminFetch<unknown>("POST", path, {
+        idempotencyKey: body.idempotencyKey,
+        ...(decision === "reject" ? { reason: body.reason ?? "" } : {}),
+      });
+      if (!res.ok) return res;
+      return { ok: true, status: res.status, data: { ok: true as const } };
+    },
+    async listCms(kind) {
+      const res = await adminFetch<unknown>("GET", CMS_ADMIN_ROUTES.list(kind));
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const rawItems = Array.isArray(rec?.items) ? rec.items : [];
+      const items: CmsPost[] = [];
+      for (const raw of rawItems) {
+        const item = readCmsPost(raw, kind);
+        if (item) items.push(item);
+      }
+      return { ok: true, status: res.status, data: { items } };
+    },
+    async createCms(kind, body) {
+      const res = await adminFetch<unknown>("POST", CMS_ADMIN_ROUTES.create(kind), body);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const item = readCmsPost(rec?.item ?? rec, kind);
+      if (!item) return unknownUnavailable();
+      return { ok: true, status: res.status, data: { item } };
+    },
+    async patchCms(kind, id, body) {
+      const res = await adminFetch<unknown>("PATCH", CMS_ADMIN_ROUTES.patch(kind, id), body);
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const item = readCmsPost(rec?.item ?? rec, kind);
+      if (!item) return unknownUnavailable();
+      return { ok: true, status: res.status, data: { item } };
+    },
+    async publishCms(kind, id) {
+      const res = await adminFetch<unknown>("POST", CMS_ADMIN_ROUTES.publish(kind, id), {});
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const item = readCmsPost(rec?.item ?? rec, kind);
+      if (!item) return unknownUnavailable();
+      return { ok: true, status: res.status, data: { item } };
+    },
+    async endCms(kind, id) {
+      const res = await adminFetch<unknown>("POST", CMS_ADMIN_ROUTES.end(kind, id), {});
+      if (!res.ok) return res;
+      const rec = asRecord(res.data);
+      const item = readCmsPost(rec?.item ?? rec, kind);
+      if (!item) return unknownUnavailable();
+      return { ok: true, status: res.status, data: { item } };
     },
     async getMembership(userId) {
       if (!isUuid(userId)) return failure(400, "INVALID_INPUT", "회원 번호는 정확한 회원 식별 값이어야 해요.");

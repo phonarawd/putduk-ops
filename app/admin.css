@@ -53,6 +53,12 @@ body{font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif
 }
 
 .empty-box{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:8px 22px 24px;padding:22px 24px;border:1px dashed #d0d5dd;border-radius:16px;background:#fafbfc}
+.fold-toggle{margin:10px 8px 6px;padding:8px 10px;border:1px dashed #3a4a68;border-radius:10px;background:transparent;color:#9eabc2;font-size:13px;font-weight:750;text-align:left}
+.qr-mark{display:flex;gap:18px;align-items:flex-start;margin:0;padding:18px 22px}
+.qr-mark img{width:196px;height:196px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.qr-mark-wait{display:grid;place-items:center;width:196px;height:196px;border:1px dashed var(--line);border-radius:12px;color:#667085;font-size:13px}
+.qr-mark figcaption{display:flex;flex-direction:column;gap:8px}
+.qr-mark code{display:block;max-width:28rem;padding:10px 12px;border-radius:10px;background:#f8f9fb;font-size:13px;word-break:break-all}
 .empty-box b{font-size:17px}
 .empty-box p{margin:0;color:#475467;font-size:15px;line-height:1.55;max-width:42rem}
 .product-list{display:flex;flex-direction:column}

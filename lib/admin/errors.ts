@@ -9,6 +9,7 @@ export type AdminFailureCode =
   | "CONNECTION_WAITING"
   | "CROSS_ORIGIN_COOKIE"
   | "STORE_UNREADY"
+  | "CONFIG_NOT_READY"
   | "REVISION_CONFLICT"
   | "NOT_FOUND"
   | "INVALID_INPUT"
@@ -83,6 +84,14 @@ export function mapHttpFailure(status: number, body: unknown): AdminResult<never
       status || 409,
       "USER_MISMATCH",
       "응답 회원 번호가 요청과 달라 화면에 넣지 않았어요. 다른 회원으로 바꾸지 않았어요.",
+      body,
+    );
+  }
+  if (codeRaw === "CONFIG_NOT_READY" || messageRaw.includes("CONFIG_NOT_READY")) {
+    return failure(
+      status || 503,
+      "CONFIG_NOT_READY",
+      "입금 안내가 아직 저장되지 않았어요. 은행 정보는 직접 적어야 하고, 가짜 계좌를 넣지 않아요.",
       body,
     );
   }

@@ -27,6 +27,22 @@ function waitingAdapter(): AdminOpsPort {
     login: wait,
     logout: wait,
     lookupUser: wait,
+    listUsers: wait,
+    getUserProfile: wait,
+    getUserDepositAddress: wait,
+    getDepositConfig: wait,
+    patchDepositConfig: wait,
+    listKrwDeposits: wait,
+    decideKrwDeposit: wait,
+    listWithdrawIntents: wait,
+    decideWithdraw: wait,
+    listKyc: wait,
+    decideKyc: wait,
+    listCms: wait,
+    createCms: wait,
+    patchCms: wait,
+    publishCms: wait,
+    endCms: wait,
     getMembership: wait,
     putDailyMatchCap: wait,
     forceMembership: wait,
@@ -74,6 +90,62 @@ function isolatedAdapter(store: IsolatedStore): AdminOpsPort {
     },
     async lookupUser(userId) {
       return store.lookupUser(userId);
+    },
+    async listUsers(cursor) {
+      return store.listUsers(cursor);
+    },
+    async getUserProfile(userId) {
+      return store.getUserProfile(userId);
+    },
+    async getUserDepositAddress(userId) {
+      return store.getUserDepositAddress(userId);
+    },
+    async getDepositConfig() {
+      return store.getDepositConfig();
+    },
+    async patchDepositConfig(body) {
+      await store.waitIfDelayed();
+      return store.patchDepositConfig(body);
+    },
+    async listKrwDeposits(status) {
+      return store.listKrwDeposits(status);
+    },
+    async decideKrwDeposit(id, decision, body) {
+      await store.waitIfDelayed();
+      return store.decideKrwDeposit(id, decision, body);
+    },
+    async listWithdrawIntents() {
+      return store.listWithdrawIntents();
+    },
+    async decideWithdraw(id, decision, body) {
+      await store.waitIfDelayed();
+      return store.decideWithdraw(id, decision, body);
+    },
+    async listKyc(status) {
+      return store.listKyc(status);
+    },
+    async decideKyc(userId, decision, body) {
+      await store.waitIfDelayed();
+      return store.decideKyc(userId, decision, body);
+    },
+    async listCms(kind) {
+      return store.listCms(kind);
+    },
+    async createCms(kind, body) {
+      await store.waitIfDelayed();
+      return store.createCms(kind, body);
+    },
+    async patchCms(kind, id, body) {
+      await store.waitIfDelayed();
+      return store.patchCms(kind, id, body);
+    },
+    async publishCms(kind, id) {
+      await store.waitIfDelayed();
+      return store.publishCms(kind, id);
+    },
+    async endCms(kind, id) {
+      await store.waitIfDelayed();
+      return store.endCms(kind, id);
     },
     async getMembership(userId) {
       return store.getMembership(userId);

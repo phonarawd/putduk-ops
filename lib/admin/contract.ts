@@ -158,7 +158,7 @@ export const CURRENT_CONTRACT_PATHS = {
 
 export const CONTRACT_ACTIVATION = {
   adminSessionLogin: "BLOCKED",
-  adminUsersPaginatedList: "BLOCKED",
+  adminUsersPaginatedList: "live",
   mallPersist: "BLOCKED",
 } as const;
 
@@ -170,8 +170,46 @@ export const ADMIN_SESSION_ROUTES = {
   logout: "/admin-session/logout",
 } as const;
 
+export const CMS_KINDS = ["notice", "event", "benefit", "banner", "notification"] as const;
+export type CmsKind = (typeof CMS_KINDS)[number];
+
+export const CMS_KIND_LABEL_KO: Record<CmsKind, string> = {
+  notice: "공지사항",
+  event: "이벤트",
+  benefit: "혜택",
+  banner: "배너",
+  notification: "알림",
+};
+
+export const CMS_ADMIN_ROUTES = {
+  list: (kind: string) => `/admin/cms/${kind}`,
+  create: (kind: string) => `/admin/cms/${kind}`,
+  get: (kind: string, id: string) => `/admin/cms/${kind}/${id}`,
+  patch: (kind: string, id: string) => `/admin/cms/${kind}/${id}`,
+  publish: (kind: string, id: string) => `/admin/cms/${kind}/${id}/publish`,
+  end: (kind: string, id: string) => `/admin/cms/${kind}/${id}/end`,
+} as const;
+
+export const WALLET_ADMIN_ROUTES = {
+  depositConfig: "/admin/wallet/deposit-config",
+  krwDepositRequests: "/admin/wallet/krw-deposit-requests",
+  krwDepositApprove: (id: string) => `/admin/wallet/krw-deposits/${id}/approve`,
+  krwDepositReject: (id: string) => `/admin/wallet/krw-deposits/${id}/reject`,
+  userDepositAddress: (id: string) => `/admin/users/${id}/deposit-address`,
+  withdrawReviewList: "/admin/wallet/withdraw-intents",
+  withdrawReviewApprove: (id: string) => `/admin/wallet/withdraw-intents/${id}/approve`,
+  withdrawReviewReject: (id: string) => `/admin/wallet/withdraw-intents/${id}/reject`,
+} as const;
+
+export const COMPLIANCE_ADMIN_ROUTES = {
+  kycQueue: "/admin/compliance/kyc",
+  kycApprove: (userId: string) => `/admin/compliance/kyc/${userId}/approve`,
+  kycReject: (userId: string) => `/admin/compliance/kyc/${userId}/reject`,
+} as const;
+
 export const MEMBERSHIP_ADMIN_ROUTES = {
   directory: "/admin/users",
+  profile: (id: string) => `/admin/users/${id}`,
   membership: (id: string) => `/admin/users/${id}/membership`,
   matchPolicyOverride: (id: string) => `/admin/users/${id}/match-policy-override`,
   dailyMatchCap: (id: string) => `/admin/users/${id}/membership/daily-match-cap`,

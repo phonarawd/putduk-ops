@@ -6,6 +6,7 @@ import {
   isMembershipId,
   isUuid,
   REASON_MIN_LENGTH,
+  type CmsKind,
   type MembershipId,
   type ProductVisibility,
 } from "../contract.ts";
@@ -28,13 +29,22 @@ import type {
   AdminSession,
   BonusGrant,
   BonusList,
+  CmsPost,
   DailyMatchQuota,
+  DepositConfigPatchBody,
+  DepositConfigView,
   DirectoryLookup,
   GradeControl,
   GradeDailyCaps,
+  KycQueueItem,
+  KrwDepositItem,
+  MemberDepositAddress,
+  MemberListItem,
+  MemberProfile,
   MembershipSnapshot,
   ParticipationRow,
   ProductUpdateDraft,
+  WithdrawIntentItem,
   WriteMeta,
 } from "../types.ts";
 
@@ -98,6 +108,11 @@ export function createIsolatedStore() {
     else sessionStorage.removeItem(SESSION_KEY);
   }
 
+  const cmsPosts: CmsPost[] = [];
+  let depositConfig: DepositConfigView | null = null;
+  const krwDeposits: KrwDepositItem[] = [];
+  const withdrawIntents: WithdrawIntentItem[] = [];
+  const kycQueue: KycQueueItem[] = [];
   let schemaReady = false;
   let presentationReady = false;
   let writeDelayMs = 0;
@@ -326,6 +341,192 @@ export function createIsolatedStore() {
           ...(user.data.resellerId ? { resellerId: user.data.resellerId } : {}),
         },
       };
+    },
+    listUsers(_cursor?: string): AdminResult<{ items: MemberListItem[]; nextCursor: string | null }> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      const items: MemberListItem[] = [];
+      for (const row of users.values()) {
+        items.push({
+          userId: row.userId,
+          createdAt: "2026-09-16T00:00:00.000Z",
+          username: MEMBERSHIP_LABEL_KO[row.membership],
+          status: row.frozen ? "frozen" : "active",
+          emailMasked: null,
+          phoneMasked: null,
+          resellerId: row.resellerId ?? null,
+          membership: row.membership,
+          signupIp: null,
+        });
+      }
+      return { ok: true, status: 200, data: { items, nextCursor: null } };
+    },
+    getUserProfile(userId: string): AdminResult<{ item: MemberProfile }> {
+      const listed = this.listUsers();
+      if (!listed.ok) return listed;
+      const found = listed.data.items.find((row) => row.userId === userId);
+      if (!found) return failure(404, "NOT_FOUND", "이 회원 번호는 찾을 수 없어요. 다른 회원으로 바꾸지 않았어요.");
+      return {
+        ok: true,
+        status: 200,
+        data: {
+          item: {
+            ...found,
+            profile: { displayName: found.username, declaredName: null, onboardingStage: null, birthDate: null },
+          },
+        },
+      };
+    },
+    getUserDepositAddress(userId: string): AdminResult<MemberDepositAddress> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      const user = needUser(userId);
+      if (!user.ok) return user;
+      return failure(404, "NOT_FOUND", "연습 화면에는 실제 입금 주소가 없어요. 공유 주소를 만들지 않았어요.");
+    },
+    getDepositConfig(): AdminResult<DepositConfigView> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      if (!depositConfig) {
+        return failure(
+          503,
+          "CONFIG_NOT_READY",
+          "입금 안내가 아직 저장되지 않았어요. 은행 정보는 직접 적어야 하고, 가짜 계좌를 넣지 않아요.",
+        );
+      }
+      return { ok: true, status: 200, data: depositConfig };
+    },
+    patchDepositConfig(body: DepositConfigPatchBody): AdminResult<DepositConfigView> {
+      const auth = needWrite("userMatchPolicy");
+      if (!auth.ok) return auth;
+      const reason = needReason(body.changeReason);
+      if (!reason.ok) return reason;
+      if (!schemaReady) {
+        return failure(503, "STORE_UNREADY", "저장소가 아직 준비되지 않아 적용하지 않았어요. 완료로 표시하지 않아요.");
+      }
+      const bank = String(body.krw?.bankName || "").trim();
+      const account = String(body.krw?.accountNumber || "").trim();
+      const holder = String(body.krw?.accountHolder || "").trim();
+      if (!bank || !account || !holder) {
+        return failure(400, "INVALID_INPUT", "은행 이름·계좌·예금주를 직접 적어 주세요. 비워 두면 저장하지 않아요.");
+      }
+      depositConfig = {
+        configVersion: (depositConfig?.configVersion ?? 0) + 1,
+        krw: {
+          bankName: bank,
+          accountNumber: account,
+          accountHolder: holder,
+          noticeKo: String(body.krw?.noticeKo || ""),
+          krwWithdrawFeeKrw: Number(body.krw?.krwWithdrawFeeKrw || 0),
+        },
+        usdtOnchain: {
+          network: "TRC20",
+          tronGridBaseUrl: body.usdtOnchain.tronGridBaseUrl,
+          hotWalletXpubRef: body.usdtOnchain.hotWalletXpubRef,
+          treasuryHotAddressRef: body.usdtOnchain.treasuryHotAddressRef,
+          energyDelegateEnabled: body.usdtOnchain.energyDelegateEnabled,
+          usdtWithdrawNetworkFeeUsdt: body.usdtOnchain.usdtWithdrawNetworkFeeUsdt,
+          minTrxStakeForSweeper: body.usdtOnchain.minTrxStakeForSweeper,
+          sweeperPaused: body.usdtOnchain.sweeperPaused,
+        },
+        withdrawGuards: { minHoldingHours: body.withdrawGuards.minHoldingHours },
+        pricingGuards: { priceStaleMaxSec: body.pricingGuards.priceStaleMaxSec, requireMinProfitUsdt: true },
+        updatedAt: new Date().toISOString(),
+      };
+      return { ok: true, status: 200, data: depositConfig };
+    },
+    listKrwDeposits(_status?: string): AdminResult<{ items: KrwDepositItem[] }> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      return { ok: true, status: 200, data: { items: krwDeposits.slice() } };
+    },
+    decideKrwDeposit(_id?: string, _decision?: string, _body?: unknown): AdminResult<{ ok: true }> {
+      return failure(404, "NOT_FOUND", "연습 화면에는 확인할 입금이 없어요.");
+    },
+    listWithdrawIntents(): AdminResult<{ items: WithdrawIntentItem[] }> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      return { ok: true, status: 200, data: { items: withdrawIntents.slice() } };
+    },
+    decideWithdraw(_id?: string, _decision?: string, _body?: unknown): AdminResult<{ ok: true }> {
+      return failure(404, "NOT_FOUND", "연습 화면에는 확인할 출금이 없어요.");
+    },
+    listKyc(_status?: string): AdminResult<{ items: KycQueueItem[] }> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      return { ok: true, status: 200, data: { items: kycQueue.slice() } };
+    },
+    decideKyc(_userId?: string, _decision?: string, _body?: unknown): AdminResult<{ ok: true }> {
+      return failure(404, "NOT_FOUND", "연습 화면에는 확인할 본인 확인이 없어요.");
+    },
+    listCms(kind: CmsKind): AdminResult<{ items: CmsPost[] }> {
+      const auth = needRead();
+      if (!auth.ok) return auth;
+      return { ok: true, status: 200, data: { items: cmsPosts.filter((row) => row.kind === kind) } };
+    },
+    createCms(kind: CmsKind, body: { title: string; body: string; imageUrl?: string }): AdminResult<{ item: CmsPost }> {
+      const auth = needWrite("userMatchPolicy");
+      if (!auth.ok) return auth;
+      const title = String(body.title || "").trim();
+      if (!title) return failure(400, "INVALID_INPUT", "제목을 적어 주세요.");
+      if (/토토|베팅|toto|betting/i.test(`${title}${body.body || ""}`)) {
+        return failure(400, "INVALID_INPUT", "토토·베팅 문구는 저장하지 않아요.");
+      }
+      const now = new Date().toISOString();
+      const item: CmsPost = {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `cms-${Date.now()}`,
+        kind,
+        status: "draft",
+        title,
+        body: String(body.body || ""),
+        imageUrl: body.imageUrl?.trim() ? body.imageUrl.trim() : null,
+        publishedAt: null,
+        endedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      cmsPosts.unshift(item);
+      return { ok: true, status: 201, data: { item } };
+    },
+    patchCms(kind: CmsKind, id: string, body: { title: string; body: string; imageUrl?: string }): AdminResult<{ item: CmsPost }> {
+      const auth = needWrite("userMatchPolicy");
+      if (!auth.ok) return auth;
+      const found = cmsPosts.find((row) => row.id === id && row.kind === kind);
+      if (!found) return failure(404, "NOT_FOUND", "찾을 수 없어요. 다른 대상으로 바꾸지 않았어요.");
+      if (found.status !== "draft") return failure(409, "REVISION_CONFLICT", "초안만 고칠 수 있어요.");
+      found.title = String(body.title || "").trim();
+      found.body = String(body.body || "");
+      found.imageUrl = body.imageUrl?.trim() ? body.imageUrl.trim() : null;
+      found.updatedAt = new Date().toISOString();
+      return { ok: true, status: 200, data: { item: found } };
+    },
+    publishCms(kind: CmsKind, id: string): AdminResult<{ item: CmsPost }> {
+      const auth = needWrite("userMatchPolicy");
+      if (!auth.ok) return auth;
+      const found = cmsPosts.find((row) => row.id === id && row.kind === kind);
+      if (!found) return failure(404, "NOT_FOUND", "찾을 수 없어요. 다른 대상으로 바꾸지 않았어요.");
+      if (found.status !== "draft" && found.status !== "published") {
+        return failure(409, "REVISION_CONFLICT", "초안만 게시할 수 있어요.");
+      }
+      const now = new Date().toISOString();
+      found.status = "published";
+      found.publishedAt = found.publishedAt ?? now;
+      found.updatedAt = now;
+      return { ok: true, status: 200, data: { item: found } };
+    },
+    endCms(kind: CmsKind, id: string): AdminResult<{ item: CmsPost }> {
+      const auth = needWrite("userMatchPolicy");
+      if (!auth.ok) return auth;
+      const found = cmsPosts.find((row) => row.id === id && row.kind === kind);
+      if (!found) return failure(404, "NOT_FOUND", "찾을 수 없어요. 다른 대상으로 바꾸지 않았어요.");
+      if (found.status !== "published" && found.status !== "ended") {
+        return failure(409, "REVISION_CONFLICT", "게시 중인 글만 종료할 수 있어요.");
+      }
+      const now = new Date().toISOString();
+      found.status = "ended";
+      found.endedAt = now;
+      found.updatedAt = now;
+      return { ok: true, status: 200, data: { item: found } };
     },
     getMembership(userId: string): AdminResult<MembershipSnapshot> {
       const auth = needRead();
