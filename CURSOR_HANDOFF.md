@@ -10,7 +10,8 @@
 4. API가 없는 화면은 가짜 성공·가짜 숫자·가짜 완료 상태를 만들지 않고 `준비 중` 또는 `확인할 수 없음` 상태로 둔다.
 5. 연결 후 운영자 로그인부터 모든 메뉴와 버튼을 브라우저에서 점검한다.
 
-기본 API 주소는 `https://api.hiptk.app`이다. 기존 인증 쿠키 `aipo_session`과 `credentials: "include"`를 유지한다.
+문서상 운영 API 안내는 `https://api.hiptk.app`이다. 환경 값이 없으면 주소를 추측해 연결하지 않는다.
+관리자 쿠키는 `aipo_admin_session`이다. 사용자 쿠키 `aipo_session`은 관리자 인증이 아니다.
 
 ## 유지
 - `app/admin-app.tsx`: 화면과 Demo 흐름

@@ -1,5 +1,8 @@
 # Admin Product Decision
 
+2026-09-15: 아래는 **운영 대기함/승인 프로세스** 메모이다.  
+상품 공개·동시 참여 컨셉은 `ADMIN_CONTRACT_DIFF.md`와 백엔드 `product-visibility-concurrent-participate.v1.json`을 본다. “회원 직접 매칭이 기본”으로 읽지 않는다.
+
 1. 요청은 담당자·중요도·기한이 있는 대기함으로 모은다.
 2. 회원 상세에서 거래·AI 대화·문의·안전 사건을 연결한다.
 3. 공지·이벤트는 작성·미리 보기·다른 직원 확인·예약 게시 순서다.
