@@ -129,10 +129,10 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-payout").fill("12.5");
     await page.getByTestId("catalog-capital").fill("80");
     await page.getByTestId("catalog-preview").click();
-    await expect(page.getByTestId("catalog-preview-body")).toContainText("전체 공개");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("모든 회원에게 공개");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("정산 USDT: 12.5");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("필요자본 USDT: 80");
-    await expect(page.getByTestId("catalog-preview-body")).toContainText("표시 KRW: 없음");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("표시 원: 없음");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("설정 지급액: 12.5");
     await expect(page.getByTestId("catalog-preview-body")).toContainText("지급 완료 아님");
     await expect(page.getByTestId("catalog-preview-body")).toHaveAttribute("data-payout-complete", "false");
@@ -153,10 +153,10 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-memo").fill("가격 근거 메모는 persist가 아님");
     await page.getByTestId("catalog-preview").click();
     const preview = page.getByTestId("catalog-preview-body");
-    await expect(preview).toContainText("선택 회원 공개");
-    await expect(preview).toContainText("독점 예약 아님");
-    await expect(preview).toContainText("가격 확인 메모(persist)");
-    await expect(preview).toContainText("시스템 가격 검증 완료가 아닙니다");
+    await expect(preview).toContainText("선택한 회원에게만 공개");
+    await expect(preview).toContainText("여러 회원이 같이 참여할 수 있어요");
+    await expect(preview).toContainText("운영 메모");
+    await expect(preview).toContainText("이 메모는 가격이 맞다는 확인이 아닙니다");
     await expect(preview).toContainText("지급 완료 아님");
     await expect(preview).toHaveAttribute("data-payout-complete", "false");
   });
@@ -207,8 +207,8 @@ test.describe("isolated-qa screens @mock", () => {
     await page.getByTestId("catalog-save").click();
     await page.getByTestId("confirm-ok").click();
     await expect(page.getByTestId("admin-toast")).toHaveAttribute("data-ok", "true");
-    await expect(page.getByTestId("catalog-last-id")).toContainText("버전 1");
-    await expect(page.getByTestId("catalog-preview-body")).toContainText("가격 확인 메모(persist)");
+    await expect(page.getByTestId("catalog-last-id")).toContainText("저장 번호 1");
+    await expect(page.getByTestId("catalog-preview-body")).toContainText("운영 메모");
     await page.getByTestId("catalog-stale-revision").click();
     await page.getByTestId("catalog-update").click();
     await page.getByTestId("confirm-ok").click();
@@ -308,7 +308,7 @@ test.describe("live unready @mock", () => {
 
   test("비밀번호 제출은 경로가 있어도 503을 완료로 열지 않는다 @live-unready", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByTestId("login-live-hint")).toContainText("admin-session/login");
+    await expect(page.getByTestId("login-live-hint")).toContainText("운영자 이메일");
     await page.getByTestId("login-id").fill("ops@example.com");
     await page.getByTestId("login-password").fill("not-a-production-password");
     await page.getByTestId("login-submit").click();

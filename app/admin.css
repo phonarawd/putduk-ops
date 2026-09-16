@@ -13,7 +13,7 @@ body{font-size:17px;line-height:1.55}.body{max-width:1360px;padding-top:42px}.si
 .profile-actions{display:flex;gap:8px}.profile-actions button{display:flex;align-items:center;gap:7px}.profile-actions svg{width:17px}.detail-section{min-height:420px}.detail-grid{display:grid;grid-template-columns:150px 1fr 150px 1fr;margin:0;padding:22px 25px;gap:0;border-bottom:1px solid var(--line)}.detail-grid dt,.detail-grid dd{margin:0;padding:13px 10px;border-bottom:1px solid #edf0f4}.detail-grid dt{color:#667085;font-size:14px}.detail-grid dd{color:#1d2939;font-size:15px;font-weight:700}.money-summary{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}.money-summary>div{display:flex;flex-direction:column;padding:24px;border-right:1px solid var(--line)}.money-summary span{color:#667085;font-size:14px}.money-summary b{margin-top:5px;font-size:23px}.member-ai-list>div{display:grid;grid-template-columns:42px 1fr auto auto;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid #edf0f4}.member-ai-list>div>svg{width:22px;color:#526078}.member-ai-list>div>div{display:flex;flex-direction:column}.member-ai-list small{margin-top:3px;color:#667085;font-size:13px}.member-ai-list a{padding:9px 12px;border:1px solid var(--line);border-radius:10px;color:#e34b30;font-size:14px;font-weight:800}.memo-compose{display:flex;gap:10px;padding:0 18px 18px}.memo-compose textarea{min-height:82px;flex:1;padding:12px;border:1px solid var(--line);border-radius:12px;resize:vertical}.memo-compose button{align-self:flex-end;padding:11px 14px;border:0;border-radius:10px;background:var(--navy);color:#fff;font-weight:800}
 @media(max-width:900px){.profile-actions{width:100%}.profile-actions button{flex:1;justify-content:center}.detail-grid{grid-template-columns:120px 1fr}.member-ai-list>div{grid-template-columns:34px 1fr auto}.member-ai-list a{grid-column:2/4;text-align:center}.money-summary{grid-template-columns:1fr}.money-summary>div{border-right:0;border-bottom:1px solid var(--line)}}
 
-body{font-family:Pretendard,"Pretendard Variable",SUIT,"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{font-family:Pretendard,"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .ops-banner{margin:0 0 16px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:#fff}
 .ops-banner b{display:block;margin-bottom:4px}
 .ops-banner p{margin:0;color:#475467;font-size:14px}
@@ -50,4 +50,29 @@ body{font-family:Pretendard,"Pretendard Variable",SUIT,"Noto Sans KR",-apple-sys
   .dialog{max-height:calc(100dvh - 24px);overflow:auto;padding:16px}
   .dialogactions{position:sticky;bottom:0;padding-top:12px;background:#fff}
   .ops-banner-alert,.ops-banner-wait{position:sticky;top:62px;z-index:15}
+}
+
+.empty-box{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:8px 22px 24px;padding:22px 24px;border:1px dashed #d0d5dd;border-radius:16px;background:#fafbfc}
+.empty-box b{font-size:17px}
+.empty-box p{margin:0;color:#475467;font-size:15px;line-height:1.55;max-width:42rem}
+.product-list{display:flex;flex-direction:column}
+.product-card{display:grid;grid-template-columns:76px minmax(0,1fr) minmax(220px,auto);align-items:center;gap:16px;width:100%;padding:16px 22px;border:0;border-bottom:1px solid #edf0f4;background:#fff;text-align:left}
+.product-card:hover{background:#fafbfc}
+.product-photo{display:grid;place-items:center;width:76px;height:76px;overflow:hidden;border-radius:14px;background:#eef1f6;color:#667085;font-size:12px;font-weight:800}
+.product-photo img{width:100%;height:100%;object-fit:cover}
+.product-main{min-width:0;display:flex;flex-direction:column;gap:6px}
+.product-name{display:block;font-size:18px;font-weight:800;line-height:1.45;letter-spacing:-.02em;word-break:keep-all;overflow-wrap:anywhere;white-space:normal}
+.product-vis{width:fit-content;padding:4px 8px;border-radius:99px;background:#edf4ff;color:#2d64bc;font-size:12px;font-weight:800}
+.product-money{display:grid;gap:6px;min-width:0}
+.product-money span{display:flex;justify-content:space-between;gap:16px;color:#344054;font-size:14px;white-space:nowrap}
+.product-money small{color:#667085;font-weight:700}
+.product-money b{font-weight:800}
+@media(max-width:900px){
+  .product-card{grid-template-columns:64px minmax(0,1fr)}
+  .product-photo{width:64px;height:64px}
+  .product-money{grid-column:2;padding-bottom:4px}
+}
+@media(max-width:760px){
+  .empty-box{margin:8px 16px 20px;padding:18px}
+  .product-card{padding:14px 16px}
 }

@@ -112,7 +112,7 @@ function operatorInputMessage(raw: string): string {
   if (raw.includes("LOCKED_STEPS") || raw.includes("five-step")) {
     return "실행 정책 5단계는 화면 진행 시간으로 쓸 수 없어요.";
   }
-  if (raw.includes("at")) return "시간 칸은 atSec만 쓸 수 있어요.";
+  if (raw.includes("at")) return "시간 칸은 시작 초만 쓸 수 있어요.";
   return "입력 값을 다시 확인해 주세요.";
 }
 

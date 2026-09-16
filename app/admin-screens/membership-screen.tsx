@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { COPY } from "../../lib/admin/copy";
 import { MEMBERSHIP_IDS, MEMBERSHIP_LABEL_KO, isUuid, sameUserId, type MembershipId } from "../../lib/admin/contract";
+import { grantStatusLabelKo, quotaSourceLabelKo, storeStatusLabelKo } from "../../lib/admin/labels";
 import { QA_USERS } from "../../lib/admin/qa/isolated-store";
 import { navHref } from "../../lib/admin-routes";
 import { resolveOrigin } from "../../lib/admin/origin";
@@ -64,7 +65,7 @@ export function UsersSearch({
       </div>
       <ResultBanner result={lookup && !lookup.ok ? lookup : null} />
       <div className="ops-form">
-        <Field label="회원 번호" hint="없는 번호는 다른 회원으로 바꾸지 않아요. 빈 검색으로 목록을 만들지 않아요.">
+        <Field label="회원 번호" hint="한 명만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.">
           <input
             data-testid="users-q"
             value={value}
@@ -85,14 +86,14 @@ export function UsersSearch({
           {busy ? "찾는 중…" : "이 회원 보기"}
         </button>
         {!value.trim() ? (
-          <p className="ops-hint">빈 검색은 페이지 목록이 아니라 준비 중/실패입니다. 호출하지 않았어요.</p>
+          <p className="ops-hint">빈칸으로는 회원 목록을 만들지 않아요. 아직 찾지 않았습니다.</p>
         ) : isUuid(value.trim()) ? null : (
           <p className="ops-hint">형식이 맞지 않아요. 첫 번째 회원으로 바꾸지 않았어요.</p>
         )}
       </div>
       {origin.mode === "isolated-qa" ? (
         <div className="ops-form">
-          <p className="ops-hint">격리 시험 회원만 아래에 있어요. 실제 회원 목록이 아닙니다.</p>
+          <p className="ops-hint">연습 화면용 회원만 아래에 있어요. 실제 회원 목록이 아닙니다.</p>
           <div className="ops-chip-row">
             <button type="button" data-testid="chip-explicit8" onClick={() => window.location.assign(navHref(`/users/${QA_USERS.explicit8}`))}>
               기존 명시 8회
@@ -115,7 +116,7 @@ export function UsersSearch({
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
             >
-              클라 이동 시험(명시 8)
+              바로 열기(명시 8회)
             </button>
             <button
               type="button"
@@ -126,14 +127,12 @@ export function UsersSearch({
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
             >
-              클라 이동 시험(0회)
+              바로 열기(0회)
             </button>
           </div>
         </div>
       ) : (
-        <WaitBanner>
-          {COPY.usersSearchHelp} 페이지 목록은 BLOCKED 입니다. GET /me/membership 으로 대체하지 않아요.
-        </WaitBanner>
+        <WaitBanner>{COPY.usersSearchHelp} 전체 회원 목록은 아직 없습니다.</WaitBanner>
       )}
     </section>
   );
@@ -281,13 +280,13 @@ export function MembershipWorkspace({
                 data-issued={snap.resellerId ? "true" : "false"}
                 className={snap.resellerId ? undefined : "ops-hint"}
               >
-                {snap.resellerId ? `리셀러 ID ${snap.resellerId}` : COPY.resellerUnissued}
+                {snap.resellerId ? `추천인 번호 ${snap.resellerId}` : COPY.resellerUnissued}
               </p>
             </div>
           </section>
           <div className="stats">
             <Stat label="오늘 사용" value={formatCount(snap.quota.used)} detail="서버가 센 오늘 참여" />
-            <Stat label="하루 기본 한도" value={formatCount(snap.quota.cap)} detail={`출처 ${snap.quota.source}`} />
+            <Stat label="하루 기본 한도" value={formatCount(snap.quota.cap)} detail={quotaSourceLabelKo(snap.quota.source)} />
             <Stat
               label="기본 잔여"
               value={formatCount(snap.quota.baseRemaining)}
@@ -311,8 +310,8 @@ export function MembershipWorkspace({
               />
             )}
             <Stat
-              label="적용 출처"
-              value={snap.quota.source}
+              label="적용 기준"
+              value={quotaSourceLabelKo(snap.quota.source)}
               detail={snap.quota.storeStatus === "unready" ? "저장소 준비 중" : "서버 응답"}
             />
             <Stat
@@ -326,7 +325,7 @@ export function MembershipWorkspace({
               }
               detail="추가 지급으로 0회 차단을 풀지 않아요."
             />
-            <Stat label="저장소" value={snap.quota.storeStatus ?? "알 수 없음"} detail={COPY.storeUnready} />
+            <Stat label="저장 상태" value={storeStatusLabelKo(snap.quota.storeStatus)} detail={COPY.storeUnready} />
           </div>
 
           <section className="panel">
@@ -359,7 +358,6 @@ export function MembershipWorkspace({
                         nextLabel: `${nextCap}회`,
                         impact: "최소 이익·엄격함·자본·돈은 그대로입니다.",
                         reason,
-                        approval: "userMatchPolicy 쓰기 권한",
                       },
                       run: () =>
                         adapter.putDailyMatchCap(userId, {
@@ -384,7 +382,6 @@ export function MembershipWorkspace({
                         nextLabel: "0회 차단",
                         impact: "추가 기회를 줘도 이 차단은 풀리지 않아요.",
                         reason,
-                        approval: "userMatchPolicy 쓰기 권한",
                       },
                       run: () => adapter.putDailyMatchCap(userId, { dailyUserMatchCap: 0, reason }),
                     })
@@ -405,7 +402,6 @@ export function MembershipWorkspace({
                         nextLabel: "개인 지정 없음",
                         impact: "등급 기본 기회가 다시 적용될 수 있어요. 사용 이력은 지우지 않아요.",
                         reason,
-                        approval: "userMatchPolicy 쓰기 권한",
                       },
                       run: () => adapter.putDailyMatchCap(userId, { clear: true, reason }),
                     })
@@ -428,7 +424,7 @@ export function MembershipWorkspace({
               <Field label="지급 수량">
                 <input value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} inputMode="numeric" />
               </Field>
-              <Field label="같은 요청 키" hint="결과가 불명확하면 이 키로 다시 확인하고, 새 요청을 만들지 마세요.">
+              <Field label="같은 요청으로 다시 보내기" hint="결과가 불명확하면 이 값으로 다시 확인하고, 새 요청을 만들지 마세요.">
                 <input value={idem} onChange={(e) => setIdem(e.target.value)} />
               </Field>
               <div className="ops-actions">
@@ -446,7 +442,6 @@ export function MembershipWorkspace({
                         nextLabel: `${bonusAmount}회 추가`,
                         impact: "계정 정지나 0회 차단은 풀리지 않아요. 만료·이월은 켜져 있지 않아요.",
                         reason,
-                        approval: "userMatchPolicy 쓰기 권한",
                       },
                       run: () =>
                         adapter.grantBonus(userId, {
@@ -479,7 +474,6 @@ export function MembershipWorkspace({
                       nextLabel: reclaimAmount ? `${reclaimAmount}회 회수` : "미사용 전부 회수",
                       impact: "이미 쓴 횟수는 되돌리지 않아요.",
                       reason,
-                      approval: "userMatchPolicy 쓰기 권한",
                     },
                     run: () =>
                       adapter.reclaimBonus(userId, {
@@ -497,7 +491,7 @@ export function MembershipWorkspace({
                 {bonus && bonus.storeStatus === "unready" ? <p>저장소 준비 전이라 지급 이력이 비어 있어요.</p> : null}
                 {bonus?.grants.map((g) => (
                   <p key={g.grantId}>
-                    {g.grantId} · +{g.amount} / 사용 {g.used} / 회수 {g.reclaimed} · {g.status}
+                    +{g.amount}회 · 사용 {g.used} · 회수 {g.reclaimed} · {grantStatusLabelKo(g.status)}
                   </p>
                 ))}
               </div>
@@ -536,7 +530,6 @@ export function MembershipWorkspace({
                         nextLabel: `${MEMBERSHIP_LABEL_KO[nextGrade]} · 수동 유지`,
                         impact: "개인 한도 0과 사용 이력은 보존합니다. 자동 하향은 켜지지 않아요.",
                         reason,
-                        approval: "userMembershipForce 쓰기 권한",
                       },
                       run: () => adapter.forceMembership(userId, { membership: nextGrade, reason }),
                     })
@@ -557,7 +550,6 @@ export function MembershipWorkspace({
                         nextLabel: "자동 등급",
                         impact: "서버가 다시 계산한 등급을 따릅니다. 사용량은 초기화하지 않아요.",
                         reason,
-                        approval: "userMembershipForce 쓰기 권한",
                       },
                       run: () => adapter.forceMembership(userId, { clearForce: true, reason }),
                     })

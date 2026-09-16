@@ -40,7 +40,7 @@ export function UnknownStat({ label, detail }: { label: string; detail?: string 
 export function DraftBanner({ children }: { children: React.ReactNode }) {
   return (
     <div className="ops-banner ops-banner-draft">
-      <b>화면 초안</b>
+      <b>아직 연결되지 않음</b>
       <p>{children}</p>
     </div>
   );
@@ -93,8 +93,8 @@ function titleFor(code: AdminFailureCode): string {
   if (code === "ADMIN_AUTH_REQUIRED" || code === "ADMIN_AUTH_INVALID") return "로그인 필요";
   if (code === "ADMIN_CSRF_INVALID") return "보안 확인 실패";
   if (code === "NOT_FOUND") return "찾을 수 없음";
-  if (code === "REVISION_CONFLICT") return "동시 변경";
-  if (code === "UNKNOWN_UNAVAILABLE") return "결과 불명";
+  if (code === "REVISION_CONFLICT") return "다른 직원이 먼저 저장함";
+  if (code === "UNKNOWN_UNAVAILABLE") return "결과를 확인할 수 없음";
   if (code === "USER_MISMATCH") return "다른 회원 응답";
   return "처리하지 않음";
 }
@@ -114,7 +114,7 @@ export function ConfirmDialog({
     <div className="backdrop" onMouseDown={close}>
       <div className="dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
         <h2>{draft.title}</h2>
-        <p>바뀌는 내용을 다시 확인한 뒤에만 진행해 주세요. 서버가 확인하기 전에는 완료가 아닙니다.</p>
+        <p>바뀌는 내용을 다시 본 뒤에만 진행해 주세요. 서버가 확인하기 전에는 완료가 아닙니다.</p>
         <div className="summary">
           <span>대상</span>
           <b>{draft.targetLabel}</b>
@@ -126,19 +126,13 @@ export function ConfirmDialog({
           <b>{draft.impact}</b>
           <span>사유</span>
           <b>{draft.reason}</b>
-          {draft.approval ? (
-            <>
-              <span>승인</span>
-              <b>{draft.approval}</b>
-            </>
-          ) : null}
         </div>
         <div className="dialogactions">
           <button type="button" data-testid="confirm-cancel" onClick={close} disabled={busy}>
-            다시 확인
+            취소
           </button>
           <button type="button" className="primary" data-testid="confirm-ok" onClick={confirm} disabled={busy}>
-            {busy ? "결과 확인 중…" : "이대로 요청"}
+            {busy ? "결과 확인 중…" : "네, 진행합니다"}
           </button>
         </div>
       </div>
