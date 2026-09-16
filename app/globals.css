@@ -3,13 +3,7 @@
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 @import "./admin.css";
 
-@font-face {
-  font-family: Pretendard;
-  src: url("/fonts/Pretendard-Regular.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-}
+/* Pretendard Regular 한 파일은 한글 퍼·뜩을 깨뜨려 쓰지 않는다. 시스템 한글 글꼴만 사용. */
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
@@ -98,7 +92,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: Pretendard, "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-sans: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 }
@@ -143,5 +137,9 @@ html,
 body {
   background: #f3f5f8;
   color: #111827;
-  font-family: Pretendard, "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-synthesis: none;
+  letter-spacing: 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }

@@ -29,10 +29,17 @@ import {
 } from "../../lib/admin/money-authority.ts";
 import { isDeniedUrl, isIsolatedAllowed, assertNoProdHost } from "./allowlist.mjs";
 import { startCanary } from "./canary.mjs";
+import { COPY } from "../../lib/admin/copy.ts";
 
 function pass(name: string) {
   console.log(`PASS ${name}`);
 }
+
+assert.equal(COPY.brand, "퍼뜩 관리");
+assert.equal(COPY.loginTitle, "퍼뜩 관리에 로그인");
+assert.equal(COPY.loginTitle.includes(" "), true);
+assert.equal(/퍼떡|퍼더/.test(`${COPY.brand}${COPY.loginTitle}`), false);
+pass("login copy keeps 퍼뜩 and word spaces");
 
 const store = createIsolatedStore();
 store.setStoreReady(true);
@@ -569,4 +576,4 @@ assert.equal(grantRetry.ok, true);
 if (grantRetry.ok) assert.equal(grantRetry.data.replay, true);
 pass("lost response retries same idempotency key");
 
-console.log("isolated-admin-flow PASS 23");
+console.log("isolated-admin-flow PASS 24");

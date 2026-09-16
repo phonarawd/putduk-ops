@@ -149,10 +149,12 @@ export function LoginScreen({
             <span>{origin.mode === "live" ? "이메일" : "아이디"}</span>
             <input
               data-testid="login-id"
+              type={origin.mode === "live" ? "email" : "text"}
               value={id}
               onChange={(e) => setId(e.target.value)}
-              autoComplete="username"
-              placeholder={origin.mode === "isolated-qa" ? "qa-super" : "운영자 이메일"}
+              autoComplete={origin.mode === "live" ? "email" : "username"}
+              inputMode={origin.mode === "live" ? "email" : "text"}
+              placeholder={origin.mode === "isolated-qa" ? "qa-super" : "이메일을 입력하세요"}
             />
           </label>
           <label>

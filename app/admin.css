@@ -13,7 +13,7 @@ body{font-size:17px;line-height:1.55}.body{max-width:1360px;padding-top:42px}.si
 .profile-actions{display:flex;gap:8px}.profile-actions button{display:flex;align-items:center;gap:7px}.profile-actions svg{width:17px}.detail-section{min-height:420px}.detail-grid{display:grid;grid-template-columns:150px 1fr 150px 1fr;margin:0;padding:22px 25px;gap:0;border-bottom:1px solid var(--line)}.detail-grid dt,.detail-grid dd{margin:0;padding:13px 10px;border-bottom:1px solid #edf0f4}.detail-grid dt{color:#667085;font-size:14px}.detail-grid dd{color:#1d2939;font-size:15px;font-weight:700}.money-summary{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}.money-summary>div{display:flex;flex-direction:column;padding:24px;border-right:1px solid var(--line)}.money-summary span{color:#667085;font-size:14px}.money-summary b{margin-top:5px;font-size:23px}.member-ai-list>div{display:grid;grid-template-columns:42px 1fr auto auto;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid #edf0f4}.member-ai-list>div>svg{width:22px;color:#526078}.member-ai-list>div>div{display:flex;flex-direction:column}.member-ai-list small{margin-top:3px;color:#667085;font-size:13px}.member-ai-list a{padding:9px 12px;border:1px solid var(--line);border-radius:10px;color:#e34b30;font-size:14px;font-weight:800}.memo-compose{display:flex;gap:10px;padding:0 18px 18px}.memo-compose textarea{min-height:82px;flex:1;padding:12px;border:1px solid var(--line);border-radius:12px;resize:vertical}.memo-compose button{align-self:flex-end;padding:11px 14px;border:0;border-radius:10px;background:var(--navy);color:#fff;font-weight:800}
 @media(max-width:900px){.profile-actions{width:100%}.profile-actions button{flex:1;justify-content:center}.detail-grid{grid-template-columns:120px 1fr}.member-ai-list>div{grid-template-columns:34px 1fr auto}.member-ai-list a{grid-column:2/4;text-align:center}.money-summary{grid-template-columns:1fr}.money-summary>div{border-right:0;border-bottom:1px solid var(--line)}}
 
-body{font-family:Pretendard,"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+body{font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .ops-banner{margin:0 0 16px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:#fff}
 .ops-banner b{display:block;margin-bottom:4px}
 .ops-banner p{margin:0;color:#475467;font-size:14px}
@@ -75,4 +75,68 @@ body{font-family:Pretendard,"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR"
 @media(max-width:760px){
   .empty-box{margin:8px 16px 20px;padding:18px}
   .product-card{padding:14px 16px}
+}
+
+/* 한글 가독성: Pretendard 합성 굵기·자간 축소로 퍼·뜩이 붙거나 퍼떡처럼 보이던 것 제거 */
+html,body,.admin,.login-page,.side,.login-brand,.login-form-wrap,button,input,textarea,select{
+  font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  font-synthesis:none;
+  letter-spacing:0;
+  word-break:keep-all;
+  overflow-wrap:break-word
+}
+h1,h2,h3,h4,.pagehead h1,.login-card h2,.login-brand h1,.login-brand>p,.brand b,.product-name{
+  letter-spacing:0;
+  word-break:keep-all;
+  overflow-wrap:break-word
+}
+.login-brand>p{letter-spacing:0}
+
+/* type 없는 input / email 은 [type=text]에 안 걸려 박스가 사라짐. 전역으로 칸을 복구 */
+input:not([type]),
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="number"]{
+  appearance:auto;
+  color:#111827
+}
+.login-card input:not([type]),
+.login-card input[type="text"],
+.login-card input[type="email"],
+.login-card input[type="password"]{
+  width:100%;
+  height:54px;
+  padding:0 15px;
+  border:1px solid #d6dbe4;
+  border-radius:13px;
+  background:#fff;
+  font-size:16px;
+  outline:0
+}
+.login-card input:focus{
+  border-color:#ff8169;
+  box-shadow:0 0 0 4px #ff5a3c16
+}
+input[type="email"]{
+  min-height:44px;
+  padding:10px 12px;
+  border:1px solid #d6dbe4;
+  border-radius:12px;
+  background:#fff
+}
+.login-card input[type="email"]{
+  min-height:54px;
+  padding:0 15px
+}
+.search input{
+  min-height:0;
+  height:auto;
+  padding:0;
+  border:0;
+  background:transparent;
+  box-shadow:none
 }

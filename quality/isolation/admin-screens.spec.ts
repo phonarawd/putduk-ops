@@ -42,6 +42,19 @@ test.describe("isolated-qa screens @mock", () => {
     await guardEgress(page);
   });
 
+  test("로그인 제목은 어절이 붙지 않고 아이디 칸에 박스가 있다", async ({ page }) => {
+    await page.goto("/login?isolatedQa=1");
+    await expect(page.locator(".login-card h2")).toHaveText("퍼뜩 관리에 로그인");
+    const id = page.getByTestId("login-id");
+    await expect(id).toHaveAttribute("type", "text");
+    await expect(id).toHaveAttribute("placeholder", "qa-super");
+    const box = await id.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    const border = await id.evaluate((el) => getComputedStyle(el).borderTopWidth);
+    expect(Number.parseFloat(border)).toBeGreaterThan(0);
+  });
+
   test("로그인 격리 시험은 계정 이름으로만 들어간다", async ({ page }) => {
     await loginIsolated(page, "/");
     await expect(page.getByTestId("header-health")).toContainText("격리 시험 중");
@@ -304,6 +317,19 @@ test.describe("live unready @mock", () => {
   test.beforeEach(async ({ page }) => {
     test.skip(process.env.PUTDUK_OPS_PW_LIVE !== "1", "같은 주소 mock API가 있을 때만");
     await guardEgress(page);
+  });
+
+  test("라이브 로그인 이메일 칸은 박스가 있고 제목에 공백이 있다 @live-unready", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.locator(".login-card h2")).toHaveText("퍼뜩 관리에 로그인");
+    const id = page.getByTestId("login-id");
+    await expect(id).toHaveAttribute("type", "email");
+    await expect(id).toHaveAttribute("placeholder", "이메일을 입력하세요");
+    const box = await id.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    const border = await id.evaluate((el) => getComputedStyle(el).borderTopWidth);
+    expect(Number.parseFloat(border)).toBeGreaterThan(0);
   });
 
   test("비밀번호 제출은 경로가 있어도 503을 완료로 열지 않는다 @live-unready", async ({ page }) => {
