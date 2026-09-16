@@ -2,13 +2,12 @@ export const COPY = {
   brand: "퍼뜩 관리",
   loginTitle: "퍼뜩 관리에 로그인",
   loginHelp: "운영 업무를 시작하려면 운영자 계정으로 들어와 주세요.",
-  loginUnimplemented:
-    "옛 문서 경로 POST /api/v1/admin-auth/login 은 없습니다. 현재 계약 경로는 POST /api/v1/admin-session/login 이며 활성화는 BLOCKED 입니다.",
+  loginUnimplemented: "이 로그인 방법은 더 이상 쓰지 않아요. 운영자 이메일과 비밀번호로 들어와 주세요.",
   loginStoreUnready:
-    "비밀번호 로그인 경로는 있으나 직원 자격 저장소가 아직 준비되지 않았습니다. 503 · 적용 안 함이며 완료가 아닙니다.",
+    "비밀번호 로그인 경로는 있으나 직원 자격 저장소가 아직 준비되지 않았습니다. 지금은 들어가지 않았어요.",
   loginWaiting: "운영자 서버 주소가 없어 연결을 기다립니다.",
-  isolatedHint: "이 컴퓨터 안에서만 쓰는 시험 화면입니다. 실제 회원은 건드리지 않아요.",
-  isolatedAccounts: "시험 계정: qa-super, qa-cs, qa-marketing",
+  isolatedHint: "이 컴퓨터 안에서만 쓰는 연습 화면입니다. 실제 회원은 건드리지 않아요.",
+  isolatedAccounts: "연습 계정: qa-super, qa-cs, qa-marketing",
   sessionExpired: "운영자 로그인이 끝났어요. 다시 들어와 주세요.",
   denied: "이 작업 권한이 없어요. 서버가 거절했습니다.",
   notFound: "이 회원 번호는 찾을 수 없어요. 다른 회원으로 바꾸지 않았어요.",
@@ -17,14 +16,13 @@ export const COPY = {
   unknown: "결과를 확인할 수 없어요. 추측 숫자로 채우지 않았어요.",
   userMismatch: "응답 회원 번호가 요청과 달라 화면에 넣지 않았어요.",
   busy: "이미 처리 중이에요. 같은 요청을 다시 보내지 않았어요.",
-  draftBanner: "이 화면은 초안입니다. 실제 운영 데이터와 연결되어 있지 않아요.",
+  draftBanner: "이 화면은 아직 실데이터와 연결되어 있지 않아요.",
   noFakeComplete: "서버가 확인한 실제 효과가 없어 완료로 표시하지 않았어요.",
   missingRoute: "없는 화면입니다. 상품 목록으로 바꾸지 않았어요.",
-  catalogListEmpty: "등록된 상품이 없습니다.",
+  catalogListEmpty: "아직 등록된 상품이 없어요. 오른쪽 위 「상품 등록」을 눌러 주세요.",
   catalogListUnavailable: "상품 목록을 확인할 수 없습니다. 추측 목록으로 채우지 않았어요.",
   catalogListLoading: "상품 목록을 불러오는 중…",
-  usersSearchHelp:
-    "지금 지원하는 것은 정확한 회원 번호(UUID) 한 건 조회입니다. 페이지 목록은 없고, 빈 검색은 목록 성공이 아닙니다.",
+  usersSearchHelp: "회원 번호 한 건만 찾습니다. 빈칸으로 목록을 만들지 않아요.",
   usersNoFallback: "없는 회원은 다른 회원으로 바꾸지 않아요.",
   capHelp: "하루 기본 기회만 바꿉니다. 최소 이익·엄격함·자본은 건드리지 않아요.",
   bonusHelp: "추가 기회는 0회 차단이나 이용 정지를 풀어 주지 않아요.",
@@ -34,28 +32,19 @@ export const COPY = {
   displayInFlight: "이미 시작된 안내는 시작 당시 시간을 유지하고, 새 설정은 다음 안내부터 적용돼요.",
   previewOnly: "미리보기는 참여나 정산을 만들지 않아요.",
   meMembershipForbidden: "회원 본인 조회는 관리자 목록으로 쓰지 않아요.",
-  catalogS2:
-    "전체 공개가 기본입니다. 선택 회원 공개는 권한이지 독점 예약이 아닙니다. 같은 상품에 여러 회원이 동시에 참여할 수 있어요.",
-  catalogPersistUnready: "실서버 상품 저장소는 아직 준비되지 않아 저장하지 않아요. 미리보기·검증은 할 수 있어요.",
-  catalogMemoHint:
-    "가격 확인 메모(priceConfirmationMemo)는 코어 persist 필드입니다. 시스템 가격 검증 완료가 아닙니다. 실 Postgres 컬럼은 아직 없어 저장소 미준비면 적용하지 않아요.",
-  catalogConcurrent: "한 회원의 참여가 다른 회원의 같은 상품 참여를 독점으로 잠그지 않아야 합니다.",
-  catalogPayoutHint:
-    "정산 USDT(payoutAmount)입니다. 0보다 큰 값을 그대로 보내요. 화면 계산값이나 원장 실지급이 아니에요.",
-  catalogKrwHint:
-    "표시 KRW(expectedProfitKrwApprox)입니다. 비우면 보내지 않아요. 0은 보내지 않아요.",
-  catalogCapitalHint:
-    "필요자본 USDT(requiredCapitalUsdt)입니다. 0보다 큰 값을 그대로 보내요.",
-  catalogResellerHidden:
-    "리셀러 ID는 서버가 준 resellerId만 표시합니다. 추천 코드·계정 이름·데모 번호로 채우지 않아요. 실DB 조회 검증은 아직 없습니다.",
-  resellerUnissued:
-    "리셀러 ID 미발급. 서버가 resellerId를 주지 않았어요. 계정 이름·추천 코드로 채우지 않았어요.",
-  catalogNoGet:
-    "상품 한 건은 서버에서 다시 받아 수정합니다. 목록이나 방금 저장한 내용으로도 수정할 수 있어요.",
-  catalogSnapshot:
-    "기존 참여는 당시 snapshot을 유지합니다. 지금 설정액·공개 범위로 바꾸지 않아요. 저널 없는 금액은 실지급이 아닙니다.",
+  catalogS2: "기본은 모든 회원에게 공개입니다. 같은 상품에 여러 회원이 함께 참여할 수 있어요.",
+  catalogPersistUnready: "상품 저장이 아직 준비되지 않으면 등록되지 않아요. 미리보기는 할 수 있어요.",
+  catalogMemoHint: "운영자가 남기는 메모입니다. 가격이 맞다는 자동 확인이 아니에요.",
+  catalogConcurrent: "한 회원의 참여가 다른 회원의 같은 상품 참여를 막지 않아요.",
+  catalogPayoutHint: "회원에게 정산할 USDT입니다. 0보다 큰 값을 그대로 저장해요.",
+  catalogKrwHint: "화면에 보여 줄 원 금액입니다. 비우면 보내지 않아요. 0은 보내지 않아요.",
+  catalogCapitalHint: "이 상품에 필요한 자본 USDT입니다. 0보다 큰 값을 그대로 저장해요.",
+  catalogResellerHidden: "추천인 번호는 서버가 준 값만 보여 줍니다. 임의로 채우지 않아요.",
+  resellerUnissued: "추천인 번호 미발급. 서버가 번호를 주지 않았어요.",
+  catalogNoGet: "상품을 고르면 서버에서 다시 받아 수정합니다.",
+  catalogSnapshot: "이미 참여한 건은 당시 금액과 공개 범위를 유지해요.",
   catalogIdempotency:
-    "상품 등록에는 서버 멱등키가 없습니다. 결과가 불명확하면 새로 등록한 것으로 보지 말고, 같은 내용으로 다시 확인만 하세요. 추가 기회 지급은 같은 요청 키로 다시 보냅니다.",
-  moneyNotPaid: "지급 완료 아님. 원장 저널과 실지급액이 함께 있을 때만 완료입니다.",
-  financeDryRun: "입출금·원장 쓰기는 아직 시험 범위라 실제 돈을 바꾸지 않아요.",
+    "상품 등록은 결과가 불명확하면 새로 등록한 것으로 보지 말고, 같은 내용으로 다시 확인만 하세요.",
+  moneyNotPaid: "지급 완료 아님. 원장 기록과 실지급액이 함께 있을 때만 완료입니다.",
+  financeDryRun: "입출금·원장 쓰기는 아직 이 화면에 연결되지 않아 실제 돈을 바꾸지 않아요.",
 } as const;

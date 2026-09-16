@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Eye, EyeOff } from "lucide-react";
 import { COPY } from "../../lib/admin/copy";
-import { CURRENT_CONTRACT_PATHS, CONTRACT_ACTIVATION, LEGACY_DOCUMENTED_PATHS } from "../../lib/admin/contract";
 import { navHref } from "../../lib/admin-routes";
 import { resolveOrigin, rememberIsolatedQa, isLoopbackHost } from "../../lib/admin/origin";
 import type { AdminOpsPort } from "../../lib/admin/types";
@@ -43,7 +42,7 @@ export function LoginScreen({
   const goIsolated = async () => {
     if (!loopback) return;
     rememberIsolatedQa(true);
-      window.location.replace(`${navHref("/login")}?isolatedQa=1&next=${encodeURIComponent(returnTo)}`);
+    window.location.replace(`${navHref("/login")}?isolatedQa=1&next=${encodeURIComponent(returnTo)}`);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -79,7 +78,7 @@ export function LoginScreen({
       return;
     }
     if (!id.trim()) {
-      setError("시험 계정 이름을 입력해 주세요.");
+      setError("연습 계정 이름을 입력해 주세요.");
       return;
     }
     busyRef.current = true;
@@ -101,7 +100,7 @@ export function LoginScreen({
     <main className="login-page">
       <section className="login-brand">
         <div className="login-logo">퍼</div>
-        <p>PUTDUK OPERATIONS</p>
+        <p>퍼뜩 운영</p>
         <h1>
           서비스의 모든 순간을
           <br />
@@ -139,11 +138,10 @@ export function LoginScreen({
           ) : null}
           {origin.mode === "live" ? (
             <div className="demo-account" data-testid="login-live-hint">
-              <b>비밀번호 로그인 준비 중</b>
+              <b>운영자 계정으로 로그인</b>
               <p>
-                현재 계약 경로 {CURRENT_CONTRACT_PATHS.adminSessionLogin} · 활성화 {CONTRACT_ACTIVATION.adminSessionLogin}.
-                옛 문서 경로 {LEGACY_DOCUMENTED_PATHS.adminAuthLogin} 은 없습니다. 저장소가 준비되지 않으면 503이며
-                완료가 아닙니다. 이미 운영자 세션이 같은 주소에 있으면 자동으로 들어갑니다.
+                운영자 이메일과 비밀번호를 입력하세요. 직원 자격이 아직 준비되지 않았으면 들어가지 않으며 완료로 보지
+                않아요. 이미 로그인되어 있으면 자동으로 들어갑니다.
               </p>
             </div>
           ) : null}
@@ -166,7 +164,7 @@ export function LoginScreen({
                 onChange={(e) => setPw(e.target.value)}
                 type={show ? "text" : "password"}
                 autoComplete="current-password"
-                placeholder={origin.mode === "isolated-qa" ? "격리 시험에서는 쓰이지 않아요" : "비밀번호"}
+                placeholder={origin.mode === "isolated-qa" ? "연습 화면에서는 쓰이지 않아요" : "비밀번호"}
                 disabled={origin.mode === "isolated-qa"}
               />
               <button type="button" onClick={() => setShow(!show)} aria-label={show ? "비밀번호 숨기기" : "비밀번호 보기"}>
@@ -180,25 +178,21 @@ export function LoginScreen({
               {error}
             </p>
           ) : null}
-          <button
-            className="login-submit"
-            data-testid="login-submit"
-            disabled={busy || origin.mode === "waiting"}
-          >
-            {busy ? "확인하는 중…" : origin.mode === "isolated-qa" ? "격리 시험 들어가기" : "로그인"}
+          <button className="login-submit" data-testid="login-submit" disabled={busy || origin.mode === "waiting"}>
+            {busy ? "확인하는 중…" : origin.mode === "isolated-qa" ? "연습 화면 들어가기" : "로그인"}
           </button>
           {loopback && origin.mode !== "isolated-qa" ? (
             <div className="demo-account">
-              <b>이 컴퓨터에서만 시험할 수 있어요.</b>
+              <b>이 컴퓨터에서만 연습할 수 있어요.</b>
               <p>{COPY.isolatedAccounts}</p>
               <button type="button" className="textbtn" onClick={goIsolated} data-testid="login-isolated-on">
-                격리 시험 모드 켜기
+                연습 화면 켜기
               </button>
             </div>
           ) : null}
           {origin.mode === "isolated-qa" ? (
             <div className="demo-account">
-              <b>격리 시험 계정</b>
+              <b>연습 계정</b>
               <p>{COPY.isolatedAccounts}. 실제 운영 비밀번호가 아닙니다.</p>
             </div>
           ) : null}

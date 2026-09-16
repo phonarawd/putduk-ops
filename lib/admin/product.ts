@@ -184,8 +184,8 @@ export function validateOperatorProductDraft(
   if (krwRaw) {
     const krw = parsePositiveDecimal(
       krwRaw,
-      "표시 KRW는 비우거나 0보다 큰 값만 보낼 수 있어요.",
-      "표시 KRW는 0을 보내지 않아요. 비우면 이 칸은 생략해요.",
+      "표시 원은 비우거나 0보다 큰 값만 보낼 수 있어요.",
+      "표시 원은 0을 보내지 않아요. 비우면 이 칸은 생략해요.",
     );
     if (!krw.ok) {
       if (!persist) {
@@ -273,7 +273,7 @@ export function productMoneyLines(draft: OperatorProductDraft, incoming?: unknow
 }
 
 export function visibilityLabelKo(value: ProductVisibility): string {
-  if (value === "all_public") return "전체 공개";
-  if (value === "selected_members") return "선택 회원 공개";
+  if (value === "all_public") return "모든 회원에게 공개";
+  if (value === "selected_members") return "선택한 회원에게만 공개";
   return "비공개";
 }

@@ -1,5 +1,6 @@
 import { connectionWaiting } from "./errors.ts";
 import { createLiveAdapter } from "./live-adapter.ts";
+import { roleLabelKo } from "./labels.ts";
 import { resolveOrigin } from "./origin.ts";
 import { createIsolatedStore, type IsolatedStore } from "./qa/isolated-store.ts";
 import type { AdminOpsPort, AdminSession } from "./types.ts";
@@ -159,6 +160,6 @@ export function sessionLabel(session: AdminSession): { name: string; role: strin
   if (!session.connected) return { name: "연결 안 됨", role: "대기" };
   return {
     name: session.displayName ?? "운영자",
-    role: session.role ?? "확인 중",
+    role: roleLabelKo(session.role),
   };
 }

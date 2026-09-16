@@ -314,10 +314,10 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
                 data-testid="qa-store-ready"
                 onClick={() => {
                   adapter.setStoreReady?.(true);
-                  notify("격리 저장소를 준비됨으로 바꿨어요. 실제 운영 DB가 아닙니다.");
+                  notify("연습용 저장소를 준비됨으로 바꿨어요. 실제 운영 저장이 아닙니다.");
                 }}
               >
-                시험 저장소 준비
+                연습 저장소 켜기
               </button>
             ) : null}
             <span className={`healthy ${healthTone(origin, session)}`} data-testid="header-health">
@@ -349,16 +349,16 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             <Conversations q={query} setQ={setQuery} filter={filter} setFilter={setFilter} />
           ) : null}
           {route.startsWith("/conversations/ai/") ? <Conversation /> : null}
-          {route.startsWith("/money/") ? <Money /> : null}
+          {route.startsWith("/money/") ? <Money route={route} /> : null}
           {route === "/identity" ? <Identity /> : null}
           {route.startsWith("/content/") ? <Content route={route} /> : null}
-          {route.startsWith("/safety/") ? <Safety /> : null}
+          {route.startsWith("/safety/") ? <Safety route={route} /> : null}
           {route === "/reports" ? <Reports /> : null}
           {route.startsWith("/support") ? <Support /> : null}
           {route === "/staff" || route === "/staff/approvals" ? <Staff approval={route.includes("approvals")} /> : null}
           {route.startsWith("/activity") ? <History access={route.includes("access")} /> : null}
           {route === "/service/display-timing" ? <PresentationScreen adapter={adapter} notify={notify} /> : null}
-          {route.startsWith("/service") && route !== "/service/display-timing" ? <Service /> : null}
+          {route.startsWith("/service") && route !== "/service/display-timing" ? <Service route={route} /> : null}
           {!known ? (
             <section className="panel" data-testid="missing-route">
               <div className="panelhead">
@@ -384,14 +384,36 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
 
 function description(r: string) {
   if (!isKnownRoute(r)) return COPY.missingRoute;
-  if (r === "/" || r === "/catalog") return COPY.catalogS2;
-  if (r === "/users") return "정확한 회원 번호로만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.";
-  if (r.startsWith("/users/")) return "하루 기본 기회, 추가 지급, 미사용 회수, 수동 등급을 서버 응답으로만 다룹니다.";
-  if (r === "/membership/grades") return "등급별 하루 기본 기회입니다. 기존 회원을 5회로 덮지 않아요.";
-  if (r === "/service/display-timing") return "웹 화면 진행 시간만 바꿉니다. 실행 정책 5단계와는 다른 설정이에요.";
-  if (r.includes("conversations")) return "권한 있는 대화 조회 계약이 확인되기 전에는 내용을 열지 않아요.";
-  if (r.startsWith("/content")) return "게시 완료로 꾸미지 않아요.";
-  if (r.startsWith("/money")) return "실제 금융 쓰기는 열지 않았어요.";
+  if (r === "/" || r === "/catalog") return "상품 이름과 세 가지 금액, 공개 범위만 보면 됩니다.";
+  if (r === "/users") return "회원 번호로 한 명만 찾습니다. 없는 번호는 다른 회원으로 바꾸지 않아요.";
+  if (r.startsWith("/users/")) return "하루 기회, 추가 지급, 등급만 바꿉니다. 서버가 확인한 결과만 완료입니다.";
+  if (r === "/membership/grades") return "등급마다 하루 기본 기회를 정합니다. 이미 따로 지정된 회원은 그대로 둡니다.";
+  if (r === "/support") return "전체 문의함은 아직 없습니다. 회원을 먼저 찾아 주세요.";
+  if (r === "/conversations/ai" || r.startsWith("/conversations/ai/")) return "실제 대화는 권한이 확인되기 전에는 열지 않아요.";
+  if (r === "/money/deposits") return "입금 확인 목록이 아직 연결되지 않았어요.";
+  if (r === "/money/withdrawals") return "출금 요청이 아직 연결되지 않았어요.";
+  if (r === "/money/transactions") return "거래 내역이 아직 연결되지 않았어요.";
+  if (r === "/money/mismatches") return "맞지 않는 금액 목록이 아직 연결되지 않았어요.";
+  if (r === "/identity") return "본인 확인 대기함이 아직 연결되지 않았어요.";
+  if (r === "/content/notices") return "공지사항 작성이 아직 연결되지 않았어요.";
+  if (r === "/content/events") return "이벤트 등록이 아직 연결되지 않았어요.";
+  if (r === "/content/benefits") return "혜택 관리가 아직 연결되지 않았어요.";
+  if (r === "/content/banners") return "배너 관리가 아직 연결되지 않았어요.";
+  if (r === "/content/messages") return "알림 보내기가 아직 연결되지 않았어요.";
+  if (r === "/safety/alerts") return "이상한 이용 알림이 아직 연결되지 않았어요.";
+  if (r === "/safety/cases") return "검토 사건이 아직 연결되지 않았어요.";
+  if (r === "/safety/lists") return "차단 목록이 아직 연결되지 않았어요.";
+  if (r === "/safety/limits") return "이용 한도는 아직 연결되지 않았어요. 회원별로 하루 기회는 바꿀 수 있어요.";
+  if (r === "/reports") return "운영 숫자는 확인할 수 없어요. 가짜 차트를 넣지 않았어요.";
+  if (r === "/staff") return "직원 목록이 아직 연결되지 않았어요.";
+  if (r === "/staff/approvals") return "승인 요청이 아직 연결되지 않았어요.";
+  if (r === "/activity") return "작업 기록이 아직 연결되지 않았어요.";
+  if (r === "/activity/access") return "열람 기록이 아직 연결되지 않았어요.";
+  if (r === "/service") return "서비스가 정상인지 지금은 확인할 수 없어요.";
+  if (r === "/service/display-timing") return "회원 화면에 보이는 진행 시간만 바꿉니다. 돈과 횟수는 그대로입니다.";
+  if (r === "/service/incidents") return "진행 중인 문제 목록이 아직 연결되지 않았어요.";
+  if (r === "/service/maintenance") return "점검 일정이 아직 연결되지 않았어요.";
+  if (r === "/service/controls") return "기능 켜기·끄기가 아직 연결되지 않았어요.";
   return "필요한 정보를 찾은 뒤에만 바꾸고, 서버가 확인한 결과만 완료로 봅니다.";
 }
 

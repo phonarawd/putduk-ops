@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { COPY } from "../../lib/admin/copy";
 import { PRODUCT_VISIBILITY, isUuid, type ProductVisibility } from "../../lib/admin/contract";
+import { formatUsdt, formatWon } from "../../lib/admin/labels";
 import {
   parseMemberIdLines,
   parsePhotoLines,
@@ -52,22 +53,30 @@ function previewLines(persist: ReturnType<typeof persistBodyFromDraft>, incoming
     `구성 수량: ${persist.compositionQty} · 판매 재고 아님`,
     `공개: ${visibilityLabelKo(persist.visibility)}`,
     persist.visibility === "selected_members"
-      ? `선택 회원 ${persist.selectedMemberIds.length}명 · 독점 예약 아님`
+      ? `선택 회원 ${persist.selectedMemberIds.length}명 · 여러 회원이 같이 참여할 수 있어요`
       : "조건 충족 회원이 동시에 참여할 수 있음",
     persist.description ? `설명: ${persist.description}` : "설명 없음",
     persist.photos.length ? `사진 ${persist.photos.length}장` : "사진 없음",
     `정산 USDT: ${persist.payoutAmount}`,
-    persist.expectedProfitKrwApprox
-      ? `표시 KRW: ${persist.expectedProfitKrwApprox}`
-      : "표시 KRW: 없음 (보내지 않음)",
+    persist.expectedProfitKrwApprox ? `표시 원: ${persist.expectedProfitKrwApprox}` : "표시 원: 없음 (보내지 않음)",
     `필요자본 USDT: ${persist.requiredCapitalUsdt}`,
     ...productMoneyLines(persist, incoming),
-    persist.priceConfirmationMemo
-      ? `가격 확인 메모(persist): ${persist.priceConfirmationMemo}`
-      : "가격 확인 메모 없음",
-    "시스템 가격 검증 완료가 아닙니다.",
+    persist.priceConfirmationMemo ? `운영 메모: ${persist.priceConfirmationMemo}` : "운영 메모 없음",
+    "이 메모는 가격이 맞다는 확인이 아닙니다.",
     COPY.catalogResellerHidden,
   ].join("\n");
+}
+
+function firstPhoto(product: OperatorProduct): string | null {
+  const raw = product.photos.find((item) => typeof item === "string" && item.trim());
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol === "https:" || url.protocol === "http:") return url.toString();
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function CatalogScreen({
@@ -307,38 +316,62 @@ export function CatalogScreen({
           <div className="panelhead">
             <div>
               <h2>등록된 상품</h2>
-              <p>서버가 준 목록만 보여 줍니다. 없는 통계는 만들지 않아요.</p>
+              <p>이름·정산 USDT·표시 원·필요자본·공개 범위만 보여 줍니다.</p>
             </div>
             <button type="button" className="primary" data-testid="catalog-register" onClick={openRegister}>
               상품 등록
             </button>
           </div>
           {listBusy ? <p className="ops-hint">{COPY.catalogListLoading}</p> : null}
-          {!listBusy && listError ? <p className="ops-hint">{COPY.catalogListUnavailable}</p> : null}
+          {!listBusy && listError ? (
+            <div className="empty-box">
+              <b>목록을 불러오지 못했어요</b>
+              <p>{COPY.catalogListUnavailable}</p>
+            </div>
+          ) : null}
           {!listBusy && !listError && listItems.length === 0 ? (
-            <p className="ops-hint" data-testid="catalog-list-empty">
-              {COPY.catalogListEmpty}
-            </p>
+            <div className="empty-box" data-testid="catalog-list-empty">
+              <b>아직 등록된 상품이 없어요</b>
+              <p>오른쪽 위 「상품 등록」을 눌러 첫 상품을 만들어 주세요.</p>
+            </div>
           ) : null}
           {!listBusy && listItems.length > 0 ? (
-            <div className="tasklist">
-              {listItems.map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  data-testid="catalog-product-row"
-                  data-product-id={product.id}
-                  onClick={() => openEdit(product)}
-                >
-                  <span className="taskcopy">
-                    <b>{product.name}</b>
-                    <small>
-                      {visibilityLabelKo(product.visibility)} · 정산 {product.payoutAmount} {product.currency} ·{" "}
-                      {product.id}
-                    </small>
-                  </span>
-                </button>
-              ))}
+            <div className="product-list">
+              {listItems.map((product) => {
+                const photo = firstPhoto(product);
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    className="product-card"
+                    data-testid="catalog-product-row"
+                    data-product-id={product.id}
+                    onClick={() => openEdit(product)}
+                  >
+                    <span className="product-photo">
+                      {photo ? <img src={photo} alt="" /> : "사진 없음"}
+                    </span>
+                    <span className="product-main">
+                      <b className="product-name">{product.name}</b>
+                      <span className="product-vis">{visibilityLabelKo(product.visibility)}</span>
+                    </span>
+                    <span className="product-money">
+                      <span>
+                        <small>정산 USDT</small>
+                        <b>{formatUsdt(product.payoutAmount)}</b>
+                      </span>
+                      <span>
+                        <small>표시 원</small>
+                        <b>{formatWon(product.expectedProfitKrwApprox)}</b>
+                      </span>
+                      <span>
+                        <small>필요자본 USDT</small>
+                        <b>{formatUsdt(product.requiredCapitalUsdt)}</b>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           ) : null}
         </section>
@@ -355,11 +388,6 @@ export function CatalogScreen({
       ) : (
         <p className="ops-hint">{COPY.catalogS2}</p>
       )}
-      <WaitBanner>{COPY.catalogNoGet}</WaitBanner>
-      <WaitBanner>{COPY.catalogMemoHint}</WaitBanner>
-      <p className="ops-hint">{COPY.catalogConcurrent}</p>
-      <p className="ops-hint">{COPY.catalogSnapshot}</p>
-      <p className="ops-hint">{COPY.catalogIdempotency}</p>
       <ResultBanner result={error} />
       <div className="ops-actions" style={{ marginBottom: 12 }}>
         <button type="button" data-testid="catalog-back-to-list" disabled={busy} onClick={backToList}>
@@ -369,8 +397,8 @@ export function CatalogScreen({
       <section className="panel">
         <div className="panelhead">
           <div>
-            <h2>상품 등록 전 확인</h2>
-            <p>기존 기회 가격 PATCH나 회원별 hide/show 덮어쓰기로 공개 범위를 바꾸지 않아요.</p>
+            <h2>{lastProduct ? "상품 수정" : "새 상품 등록"}</h2>
+            <p>이름과 세 가지 금액, 공개 범위만 확인하면 됩니다.</p>
           </div>
         </div>
         <div className="ops-form">
@@ -384,7 +412,7 @@ export function CatalogScreen({
           <Field label="설명">
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
-          <Field label="사진 주소" hint="한 줄에 하나. 비워도 됩니다.">
+          <Field label="사진 주소" hint="한 줄에 주소 하나. 없어도 됩니다.">
             <textarea value={form.photos} onChange={(e) => setForm({ ...form, photos: e.target.value })} />
           </Field>
           <Field label="구성 수량" hint="판매 재고가 아닙니다.">
@@ -402,7 +430,7 @@ export function CatalogScreen({
               onChange={(e) => setForm({ ...form, payoutAmount: e.target.value })}
             />
           </Field>
-          <Field label="표시 KRW" hint={COPY.catalogKrwHint}>
+          <Field label="표시 원" hint={COPY.catalogKrwHint}>
             <input
               data-testid="catalog-krw"
               value={form.expectedProfitKrwApprox}
@@ -416,7 +444,7 @@ export function CatalogScreen({
               onChange={(e) => setForm({ ...form, requiredCapitalUsdt: e.target.value })}
             />
           </Field>
-          <Field label="공개 범위" hint="전체 공개가 기본. 선택 공개는 권한이지 독점 예약이 아닙니다.">
+          <Field label="공개 범위" hint="기본은 모든 회원에게 공개입니다. 선택 공개여도 여러 회원이 함께 참여할 수 있어요.">
             <select
               data-testid="catalog-visibility"
               value={form.visibility}
@@ -430,7 +458,7 @@ export function CatalogScreen({
             </select>
           </Field>
           {form.visibility === "selected_members" ? (
-            <Field label="선택 회원 번호" hint="UUID를 쉼표나 줄로 구분. 여러 회원도 같은 상품에 동시 참여할 수 있어요.">
+            <Field label="선택 회원 번호" hint="회원 번호를 쉼표나 줄로 구분하세요. 여러 회원이 같은 상품에 함께 참여할 수 있어요.">
               <textarea
                 data-testid="catalog-members"
                 value={form.selectedMemberIds}
@@ -438,7 +466,7 @@ export function CatalogScreen({
               />
             </Field>
           ) : null}
-          <Field label="가격 확인 메모" hint={COPY.catalogMemoHint}>
+          <Field label="운영 메모" hint={COPY.catalogMemoHint}>
             <textarea
               data-testid="catalog-memo"
               value={form.operatorMemo}
@@ -457,19 +485,18 @@ export function CatalogScreen({
               onClick={() => {
                 setPending(() => saveRegister);
                 setDraft({
-                  title: "이 상품을 실서버에 등록할까요?",
+                  title: "이 상품을 등록할까요?",
                   targetLabel: checked.ok ? checked.data.name : form.name,
                   currentLabel: "저장 전",
                   nextLabel: checked.ok
                     ? `${visibilityLabelKo(checked.data.visibility)} · 정산 ${checked.data.payoutAmount} USDT`
-                    : "검증 실패",
-                  impact:
-                    "저장소가 준비되지 않으면 503이며 완료가 아닙니다. 메모는 시스템 검증이 아닙니다. 설정액은 실지급이 아닙니다.",
-                  reason: "운영자 상품 등록 요청",
+                    : "확인 필요",
+                  impact: "저장이 준비되지 않으면 등록되지 않아요. 이 금액은 아직 지급 완료가 아닙니다.",
+                  reason: "운영자 상품 등록",
                 });
               }}
             >
-              실서버 저장 요청
+              상품 등록
             </button>
           </div>
           {preview ? (
@@ -483,12 +510,12 @@ export function CatalogScreen({
       <section className="panel">
         <div className="panelhead">
           <div>
-            <h2>아는 상품 수정·참여 조회</h2>
+            <h2>저장한 상품 고치기</h2>
             <p>{COPY.catalogNoGet}</p>
           </div>
         </div>
         <div className="ops-form">
-          <Field label="상품 번호" hint="목록에서 고른 번호나 이미 아는 UUID를 넣어요.">
+          <Field label="상품 번호" hint="목록에서 고른 상품이면 자동으로 채워집니다.">
             <input
               data-testid="catalog-known-id"
               value={knownId}
@@ -501,7 +528,7 @@ export function CatalogScreen({
           </Field>
           <p className="ops-hint" data-testid="catalog-last-id">
             {lastProduct
-              ? `마지막 저장 응답 ${lastProduct.id} · 버전 ${lastProduct.revision}`
+              ? `마지막 저장 응답 ${lastProduct.id} · 저장 번호 ${lastProduct.revision}`
               : "마지막 저장 응답 없음. 단건 조회로 채우지 않았어요."}
           </p>
           <div className="ops-actions">
@@ -514,16 +541,15 @@ export function CatalogScreen({
                 setPending(() => saveUpdate);
                 setDraft({
                   title: "이 상품을 수정할까요?",
-                  targetLabel: targetId,
-                  currentLabel: expectedRevision != null ? `버전 ${expectedRevision}` : "버전 확인 불가",
-                  nextLabel: checked.ok ? checked.data.name : "검증 실패",
-                  impact: "단건 조회 없이 아는 번호로만 요청합니다. 409면 다시 확인하세요. 기존 참여 snapshot은 유지됩니다.",
-                  reason: "운영자 상품 수정 요청",
-                  approval: expectedRevision != null ? `expectedRevision ${expectedRevision}` : "버전 없음",
+                  targetLabel: lastProduct?.name || "선택한 상품",
+                  currentLabel: expectedRevision != null ? `저장 번호 ${expectedRevision}` : "저장 번호 확인 불가",
+                  nextLabel: checked.ok ? checked.data.name : "확인 필요",
+                  impact: "이미 참여한 건의 금액은 그대로 둡니다. 다른 직원이 먼저 바꿨으면 다시 불러 주세요.",
+                  reason: "운영자 상품 수정",
                 });
               }}
             >
-              수정 요청
+              수정하기
             </button>
             <button
               type="button"
@@ -533,15 +559,15 @@ export function CatalogScreen({
                 setPending(() => saveVisibility);
                 setDraft({
                   title: "공개 범위를 바꿀까요?",
-                  targetLabel: targetId,
+                  targetLabel: lastProduct?.name || "선택한 상품",
                   currentLabel: lastProduct ? visibilityLabelKo(lastProduct.visibility) : "확인 불가",
-                  nextLabel: checked.ok ? visibilityLabelKo(checked.data.visibility) : "검증 실패",
-                  impact: "선택 공개는 권한이지 독점이 아닙니다. 기존 참여 기록은 지우지 않아요.",
+                  nextLabel: checked.ok ? visibilityLabelKo(checked.data.visibility) : "확인 필요",
+                  impact: "선택 공개여도 여러 회원이 함께 참여할 수 있어요. 이미 참여한 기록은 지우지 않아요.",
                   reason: "운영자 공개 범위 변경",
                 });
               }}
             >
-              공개 범위 요청
+              공개 범위 바꾸기
             </button>
             <button
               type="button"
@@ -549,7 +575,7 @@ export function CatalogScreen({
               disabled={busy || !isUuid(targetId)}
               onClick={() => void loadParticipations()}
             >
-              참여·지급 조회
+              참여·지급 보기
             </button>
             {origin.mode === "isolated-qa" && lastProduct && adapter.bumpProductRevision ? (
               <button
@@ -560,13 +586,13 @@ export function CatalogScreen({
                   const ok = adapter.bumpProductRevision?.(lastProduct.id);
                   notify(
                     ok
-                      ? "격리 시험: 서버 버전만 올렸어요. 실제 운영 변경이 아닙니다."
-                      : "격리 시험: 버전을 올리지 못했어요.",
+                      ? "연습: 다른 직원이 먼저 바꾼 상황을 만들었어요. 실제 운영 변경이 아닙니다."
+                      : "연습: 상황을 만들지 못했어요.",
                     false,
                   );
                 }}
               >
-                다른 직원 변경 가정
+                다른 직원이 먼저 바꾼 상황
               </button>
             ) : null}
           </div>
@@ -577,8 +603,8 @@ export function CatalogScreen({
               {rows.length === 0 ? <p>참여가 없거나 저장소가 비어 있어요. 지급 완료가 아닙니다.</p> : null}
               {rows.map((row) => (
                 <p key={row.id} data-payout-complete={isPayoutComplete(row.moneyAuthority ?? null) ? "true" : "false"}>
-                  {row.userId} · {row.id}
-                  {row.snapshot?.payoutAmount ? ` · 당시 설정 ${row.snapshot.payoutAmount}` : ""}
+                  회원 {row.userId}
+                  {row.snapshot?.payoutAmount ? ` · 당시 정산 ${row.snapshot.payoutAmount} USDT` : ""}
                   {" · "}
                   {moneyDisplayLines(row.moneyAuthority ?? null).join(" / ")}
                 </p>

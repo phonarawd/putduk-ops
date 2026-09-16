@@ -132,7 +132,7 @@ export function PresentationScreen({
     <>
       <ResultBanner result={error} />
       <div className="stats">
-        <Stat label="계약 버전" value={listed ? String(listed.revision) : "확인 중"} detail="동시 변경 방지 번호" />
+        <Stat label="저장 번호" value={listed ? String(listed.revision) : "확인 중"} detail="다른 직원이 먼저 바꾸면 다시 불러 주세요" />
         <Stat
           label="저장 상태"
           value={listed?.storeStatus ?? "확인 중"}
@@ -151,7 +151,7 @@ export function PresentationScreen({
         <p className="ops-hint">{COPY.displayInFlight}</p>
         <div className="ops-form">
           {JOURNEY_V19_STEPS.map((id) => (
-            <Field key={id} label={`${JOURNEY_V19_LABEL_KO[id]} (atSec)`} hint={id === "product" ? "첫 단계는 0초" : "이전보다 크고 전체 시간보다 작아야 해요."}>
+            <Field key={id} label={`${JOURNEY_V19_LABEL_KO[id]} 시작(초)`} hint={id === "product" ? "첫 단계는 0초" : "이전보다 크고 전체 시간보다 작아야 해요."}>
               <input
                 value={atSec[id]}
                 onChange={(e) => setAtSec((prev) => ({ ...prev, [id]: e.target.value }))}
@@ -181,12 +181,11 @@ export function PresentationScreen({
                   title: "화면 진행 시간을 저장할까요?",
                   targetLabel: "전체 회원 화면 안내",
                   currentLabel: listed
-                    ? listed.phases.map((p) => `${p.id}:${p.atSec}`).join(", ")
+                    ? listed.phases.map((p) => `${JOURNEY_V19_LABEL_KO[p.id]} ${p.atSec}초`).join(", ")
                     : "확인 중",
-                  nextLabel: JOURNEY_V19_STEPS.map((id) => `${id}:${atSec[id]}`).join(", "),
-                  impact: "엔진 마감·돈·횟수·등급은 바뀌지 않아요. 진행 중인 안내는 시작 당시 값을 유지해요.",
+                  nextLabel: JOURNEY_V19_STEPS.map((id) => `${JOURNEY_V19_LABEL_KO[id]} ${atSec[id]}초`).join(", "),
+                  impact: "돈·횟수·등급은 바뀌지 않아요. 이미 시작된 안내는 시작 당시 값을 유지해요.",
                   reason,
-                  approval: `expectedRevision ${listed?.revision ?? "?"}`,
                 })
               }
             >

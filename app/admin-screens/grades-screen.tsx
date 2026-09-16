@@ -97,8 +97,8 @@ export function GradesScreen({
                 <tr>
                   <th>등급</th>
                   <th>지금 기본</th>
-                  <th>신규 컴파일 기본</th>
-                  <th>옛 사다리(참고)</th>
+                  <th>새로 가입하면</th>
+                  <th>예전 기준(참고)</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,7 +116,7 @@ export function GradesScreen({
         ) : null}
         <div className="ops-form">
           <p className="ops-hint">
-            버전 {listed?.revision ?? "확인 중"} · 기존 회원 일괄 덮어쓰기 {listed?.existingMemberBackfill === false ? "없음" : "확인 불가"} · 저장소 {listed?.storeStatus ?? "확인 중"}
+            저장 번호 {listed?.revision ?? "확인 중"} · 기존 회원 일괄 변경 {listed?.existingMemberBackfill === false ? "없음" : "확인 불가"} · {listed?.storeStatus === "unready" ? "저장 아직 준비 중" : listed?.storeStatus === "ready" ? "저장 가능" : "저장 상태 확인 중"}
           </p>
           <Field label="바꿀 등급">
             <select
@@ -152,7 +152,6 @@ export function GradesScreen({
                 nextLabel: `${cap}회`,
                 impact: "이미 개인 한도가 있는 회원은 그대로 둡니다. 사용 이력을 초기화하지 않아요.",
                 reason,
-                approval: `expectedRevision ${listed?.revision ?? "?"}`,
               })
             }
           >
