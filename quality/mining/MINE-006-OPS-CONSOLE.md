@@ -5,7 +5,8 @@
 - Ops repo: `phonarawd/putduk-ops`
 - branch: `phase/mine-ops-console-20260921`
 - exact base: `070c98e7b28a37c0a615baac18ebd9631ceab2ce`
-- 현재 검증 HEAD: `990edc43de995c0b50108da1720e7356db0dc250`
+- PHASE06 implementation evidence SHA: `94e2d4384b3607abc9f5a8e0e30fcf21889a9df8`
+- PHASE06 verify workflow introduction SHA: `990edc43de995c0b50108da1720e7356db0dc250`
 - Backend API authority: `phonarawd/AI-Profit-OS`
 - Backend branch: `phase/mine-admin-api-20260921`
 - Backend authority SHA: `8630dbf7c197c37c9888fd66588e5976af56059c`
@@ -132,9 +133,7 @@ mutation은 server response 성공 이후에만 success toast/state refresh를 �
 
 Render fresh-checkout runner는 private `putduk-ops` repo를 fetch하지 못해 생성이 거절되었다.
 
-이를 우회하기 위해 다음 workflow를 추가했다.
-
-`.github/workflows/phase06-verify.yml`
+이를 우회하기 위해 `.github/workflows/phase06-verify.yml`을 추가했다.
 
 workflow 명령:
 
@@ -146,17 +145,19 @@ npm run lint
 npm run build
 ```
 
-GitHub Actions run:
+GitHub Actions 실행 2회:
 
-- run id: `35526090772`
-- HEAD: `990edc43de995c0b50108da1720e7356db0dc250`
-- result: `failure`
-- job step count: `0`
-- job log artifact: 없음 / 404
+- run `35526090772` @ `990edc43de995c0b50108da1720e7356db0dc250`
+- run `35526238911` @ `a95d49350b3e09bfaee429b72653729bb41ba6bf`
+- 둘 다 `failure`
+- 두 job 모두 `steps=null`
+- 첫 job log artifact도 404 / BlobNotFound
 
 즉 실제 assertion/typecheck/lint/build 명령은 시작되지 않았다.
 코드 실패로 판정하지 않으며 PASS로도 기록하지 않는다.
-이전 계정의 Actions quota/billing 제한과 같은 runner-before-start 계층의 blocker로 남긴다.
+runner 시작 전 계층 blocker가 두 번 재현되었다.
+
+불필요한 실패 알림을 반복하지 않도록 workflow는 이후 `workflow_dispatch` 수동 실행 전용으로 전환했다.
 
 ## 7. Production read-only 확인
 
@@ -246,6 +247,18 @@ Build successful
 
 따라서 dedicated mining backend의 exact checkout / PHASE05 contract / Rust binary / Nest TypeScript build gate는 PASS다.
 
+runtime 로그에서 PHASE05 mining Admin API 20개가 실제 Nest router에 등록된 것을 확인했다.
+
+등록 범위:
+
+- mine 9개 route
+- rate 6개 route
+- position 2개 route
+- settlement 3개 route
+
+무인증 `GET /api/v1/admin/mines` 요청은 404가 아니라 `401 ADMIN_AUTH_REQUIRED`로 거절되었다.
+즉 전용 backend의 route와 AdminGuard 경계는 runtime에서도 활성화되어 있다.
+
 비민감 env만 설정했다.
 
 - `NODE_ENV=production`
@@ -289,7 +302,7 @@ Render inventory와 backend branch 비교에서 기존 `AI-Profit-OS` 서비스�
 ```
 
 staging DB와 maker/checker identity 전제는 준비되었다.
-dedicated backend build도 PASS했다.
+dedicated backend build와 runtime route/auth boundary도 PASS했다.
 
 현재 남은 blocker:
 
@@ -315,6 +328,8 @@ secret을 source, migration evidence, chat output에 하드코딩하지 않았�
 - PHASE05 assertion
 - Rust release binary build
 - Nest TypeScript build
+- PHASE05 mining 20 route runtime registration
+- AdminGuard unauthenticated denial runtime 확인
 
 미완료:
 
