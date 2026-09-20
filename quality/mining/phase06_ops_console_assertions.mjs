@@ -24,14 +24,7 @@ const theme = read("app/mining.css");
 // Locked PHASE05 admin API surface. Do not invent mining endpoints in Ops.
 for (const route of [
   "/admin/mines",
-  "/publish",
-  "/pause-new-positions",
-  "/pause",
-  "/resume",
-  "/end",
   "/rates",
-  "/request-approval",
-  "/approve",
   "/schedule",
   "/admin/mining/positions",
   "/admin/mining/settlements",
@@ -40,6 +33,30 @@ for (const route of [
 ]) {
   requireText(miningClient, route, "locked admin route coverage");
 }
+
+// Dynamic action routes are intentionally built from narrow allowlists. Verify both
+// the allowlist and the exact route template instead of requiring impossible literal
+// substrings such as "/publish" inside a `${action}` template.
+requireText(
+  miningClient,
+  'action: "publish" | "pause-new-positions" | "pause" | "resume" | "end"',
+  "locked mine action allowlist",
+);
+requireText(
+  miningClient,
+  '`/admin/mines/${encodeURIComponent(mineId)}/${action}`',
+  "locked mine action route template",
+);
+requireText(
+  miningClient,
+  'action: "request-approval" | "approve"',
+  "locked rate action allowlist",
+);
+requireText(
+  miningClient,
+  '`/admin/mines/${encodeURIComponent(mineId)}/rates/${encodeURIComponent(rateVersionId)}/${action}`',
+  "locked rate action route template",
+);
 
 requireText(miningClient, '"Idempotency-Key"', "admin mutation idempotency");
 requireText(miningClient, "MINING_NEW_POSITIONS_PAUSE", "new-position kill switch");
