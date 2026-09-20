@@ -288,7 +288,40 @@ Render inventory와 backend branch 비교에서 기존 `AI-Profit-OS` 서비스�
 
 잠긴 deployment boundary는 mining production을 기존 legacy service에 덮어씌우는 것을 금지하므로 기존 서비스를 branch 전환하지 않았다.
 
-## 11. PHASE06 E2E gate
+## 11. Staging E2E harness
+
+추가:
+
+`quality/mining/phase06_staging_e2e.mjs`
+
+secret/admin identity를 소스에 넣지 않는다.
+실행 시에만 다음 환경값을 받는다.
+
+- `JWT_ADMIN_SECRET`
+- `PHASE06_MAKER_ADMIN_ID`
+- `PHASE06_CHECKER_ADMIN_ID`
+- optional `PHASE06_API_BASE_URL`
+
+자동 검증 순서:
+
+```text
+광산 생성 READY
+-> 수익률 DRAFT 생성
+-> 승인 요청 APPROVAL_PENDING
+-> maker self-approval 시도 / 409 거부 확인
+-> checker identity 승인
+-> 즉시 적용 / rate ACTIVE
+-> 광산 공개 / mine ACTIVE
+-> GET readback으로 rate/mine ACTIVE + checker identity 확인
+-> staging test mine END 정리
+```
+
+JWT는 Backend SSOT와 같은 HS256 / issuer `ai-profit-os-admin` / audience `aipo-ops` 형식으로 런타임 생성한다.
+토큰은 파일이나 로그에 저장하지 않는다.
+
+로컬 Node `--check` 문법 검증: PASS.
+
+## 12. PHASE06 E2E gate
 
 필수 실제 흐름:
 
@@ -303,17 +336,18 @@ Render inventory와 backend branch 비교에서 기존 `AI-Profit-OS` 서비스�
 
 staging DB와 maker/checker identity 전제는 준비되었다.
 dedicated backend build와 runtime route/auth boundary도 PASS했다.
+E2E 실행 harness도 준비되었다.
 
 현재 남은 blocker:
 
 1. dedicated staging Render service에 `DATABASE_URL` / `JWT_ADMIN_SECRET`을 secret-safe 방식으로 설정해야 함
-2. 설정 후 실제 Nest Admin API로 maker/checker E2E를 수행해야 함
+2. 설정 후 준비된 harness로 실제 Nest Admin API maker/checker E2E를 수행해야 함
 3. Ops fresh-checkout assertion/typecheck/lint/build runner가 아직 실제 step을 실행하지 못함
 
 두 번째 admin 계정을 Production에 만들거나 Production test mine을 삽입하여 gate를 우회하지 않았다.
 secret을 source, migration evidence, chat output에 하드코딩하지 않았다.
 
-## 12. Verdict
+## 13. Verdict
 
 `MINE-006 = BLOCKED / NOT CLOSED`
 
@@ -330,6 +364,7 @@ secret을 source, migration evidence, chat output에 하드코딩하지 않았�
 - Nest TypeScript build
 - PHASE05 mining 20 route runtime registration
 - AdminGuard unauthenticated denial runtime 확인
+- staging maker/checker E2E harness 작성 + Node syntax PASS
 
 미완료:
 
