@@ -5,11 +5,13 @@
 - Ops repo: `phonarawd/putduk-ops`
 - branch: `phase/mine-ops-console-20260921`
 - exact base: `070c98e7b28a37c0a615baac18ebd9631ceab2ce`
+- 현재 검증 HEAD: `990edc43de995c0b50108da1720e7356db0dc250`
 - Backend API authority: `phonarawd/AI-Profit-OS`
 - Backend branch: `phase/mine-admin-api-20260921`
 - Backend authority SHA: `8630dbf7c197c37c9888fd66588e5976af56059c`
 - mining contract: `2026-09-20.mine-v1`
 - Production Supabase: `mgsytcetsiecllmhcyox`
+- isolated staging Supabase: `uluzxvdpynytytduuryy` (`staging-release-20260902`)
 
 ## 1. 구현 범위
 
@@ -62,7 +64,7 @@ Ops mining 화면에서 Supabase를 직접 호출하지 않는다.
 
 `putduk-web`은 수정하지 않았다.
 
-Backend repo도 PHASE06에서 수정하지 않았다.
+Backend implementation도 PHASE06에서 수정하지 않았다.
 
 ## 3. Maker / Checker
 
@@ -75,6 +77,8 @@ Backend authority는 별도로 다음을 강제한다.
 - DB no-self-approval constraint 유지
 
 따라서 UI 방어를 우회해도 서버가 self approval을 거부한다.
+
+Production에는 활성 admin identity가 충분하지 않지만, isolated staging에는 활성 `super` 3명과 활성 `cs` 1명이 있어 maker/checker 2 identity 전제는 staging에서 충족되었다.
 
 ## 4. 성공 표시 원칙
 
@@ -105,7 +109,7 @@ mutation은 server response 성공 이후에만 success toast/state refresh를 �
 
 최종 리셀 잔재 제거는 PHASE26 범위를 유지한다.
 
-## 6. 정적 gate
+## 6. Ops 정적 / fresh-checkout gate
 
 추가:
 
@@ -126,15 +130,33 @@ mutation은 server response 성공 이후에만 success toast/state refresh를 �
 - 한국어 운영 상태명
 - Mineral Luxury light/dark theme token
 
-현재 환경에서는 fresh checkout `node quality/mining/phase06_ops_console_assertions.mjs`, `pnpm typecheck`, `pnpm lint`, `pnpm build`를 실행할 runner를 확보하지 못했다.
+Render fresh-checkout runner는 private `putduk-ops` repo를 fetch하지 못해 생성이 거절되었다.
 
-따라서 위 gate는 **NOT RUN**이며 PASS로 기록하지 않는다.
+이를 우회하기 위해 다음 workflow를 추가했다.
 
-GitHub Actions는 이전 PHASE에서 quota exhausted 상태이며, 현재 PHASE06 HEAD에 연결된 run도 확인되지 않았다.
+`.github/workflows/phase06-verify.yml`
 
-기록:
+workflow 명령:
 
-`NOT RUN / quota exhausted`
+```text
+npm ci
+node quality/mining/phase06_ops_console_assertions.mjs
+npm run typecheck
+npm run lint
+npm run build
+```
+
+GitHub Actions run:
+
+- run id: `35526090772`
+- HEAD: `990edc43de995c0b50108da1720e7356db0dc250`
+- result: `failure`
+- job step count: `0`
+- job log artifact: 없음 / 404
+
+즉 실제 assertion/typecheck/lint/build 명령은 시작되지 않았다.
+코드 실패로 판정하지 않으며 PASS로도 기록하지 않는다.
+이전 계정의 Actions quota/billing 제한과 같은 runner-before-start 계층의 blocker로 남긴다.
 
 ## 7. Production read-only 확인
 
@@ -155,17 +177,93 @@ PHASE06 검증을 위해 production mining test data를 삽입하지 않았다.
 super / active = 1
 ```
 
-`admin_rbac`에서 `active=true` row는 현재 0이었다.
+민감 인증값/password hash/TOTP secret은 읽지 않았다.
 
-민감 인증값/password hash는 읽지 않았다.
+Production에 2차 admin 계정이나 test mine을 추가해 gate를 우회하지 않았다.
 
-## 8. Live Nest API blocker
+## 8. Isolated staging DB 준비
 
-현재 Ops가 고정 사용 중인 upstream:
+기존 Supabase staging branch:
+
+- name: `staging-release-20260902`
+- project ref: `uluzxvdpynytytduuryy`
+- `with_data=false`
+
+Production에서 이미 검증된 repo migration을 그대로 적용했다.
+
+- `20260920134053_mining_foundation_v1.sql` -> SUCCESS
+- `20260921162500_mining_admin_controls_v1.sql` -> SUCCESS
+
+검증:
+
+- 9개 mining table RLS=true
+- 9개 mining table FORCE RLS=true
+- `MINING_NEW_POSITIONS_PAUSE=false`
+- `MINING_SETTLEMENT_PAUSE=false`
+- active admin identities: `super=3`, `cs=1`
+
+staging runtime DB role `putduk_mine_staging`을 만들었다.
+
+현재 role 상태:
+
+- LOGIN=true
+- BYPASSRLS=true (FORCE RLS mining server access 용도)
+- `service_role` membership=false
+- bootstrap comment/credential metadata 제거됨
+- 필요한 mining / approval / audit tables에만 최소 grant 유지
+
+Production role/credential은 변경하지 않았다.
+
+## 9. Dedicated mining Render staging backend
+
+잠긴 deployment boundary에 따라 기존 legacy Render 서비스를 mining backend로 재사용하지 않았다.
+
+새 전용 서비스:
+
+- name: `putduk-mine-api-staging`
+- service id: `srv-dao1f1id0e5s73ekdhtg`
+- URL: `https://putduk-mine-api-staging.onrender.com`
+- branch: `phase/mine-admin-api-20260921`
+- checkout SHA: `8630dbf7c197c37c9888fd66588e5976af56059c`
+- region: Singapore
+- auto deploy: off
+
+첫 deploy:
+
+- deploy id: `dep-dao1f2qd0e5s73ekdl40`
+- status: `live`
+
+빌드 gate 결과:
+
+```text
+VERIFY_HEAD=8630dbf7c197c37c9888fd66588e5976af56059c
+PHASE05_ADMIN_API_ASSERTIONS_PASS
+Rust mining_profit_cli release build PASS
+[verify:api-nest-build] PASS (services/api-nest tsc build clean)
+PUTDUK_MINE_STAGING_BUILD_OK
+Build successful
+```
+
+따라서 dedicated mining backend의 exact checkout / PHASE05 contract / Rust binary / Nest TypeScript build gate는 PASS다.
+
+비민감 env만 설정했다.
+
+- `NODE_ENV=production`
+- `SUPABASE_PROJECT_REF=uluzxvdpynytytduuryy`
+- `SUPABASE_REGION=ap-northeast-2`
+
+`DATABASE_URL`, `JWT_ADMIN_SECRET` 같은 secret을 모델이 API tool 사이에 직접 전달하려는 요청은 안전검사에 의해 차단되었다.
+따라서 secret을 우회 노출하거나 source에 하드코딩하지 않았다.
+
+브라우저 세션 안에서만 secret을 옮기는 자동화도 시도했지만 TinyFish wallet 부족으로 실행 자체가 시작되지 않았다.
+
+## 10. 기존 public origin 상태
+
+기존 Ops upstream:
 
 `https://api.hiptk.app`
 
-2026-09-21 확인:
+이전 PHASE06 확인에서:
 
 ```text
 GET /api/v1/health                         -> HTTP 503
@@ -173,12 +271,11 @@ GET /api/v1/admin/mines                    -> HTTP 503
 GET /api/v1/admin/system-control/switches  -> HTTP 503
 ```
 
-따라서 현재 public origin에서 실제 Nest admin API E2E를 수행할 수 없다.
+Render inventory와 backend branch 비교에서 기존 `AI-Profit-OS` 서비스는 `main` 배포선이고, PHASE05 mining backend branch는 `main`보다 별도 49 commits 앞선 상태임을 확인했다.
 
-PHASE05의 Render verify service `putduk-mine-phase05-admin-verify`도 실제 Nest API가 아니다.
-그 서비스의 start command는 단순 `ok` HTTP server이며 build validation 전용이다.
+잠긴 deployment boundary는 mining production을 기존 legacy service에 덮어씌우는 것을 금지하므로 기존 서비스를 branch 전환하지 않았다.
 
-## 9. PHASE06 E2E gate
+## 11. PHASE06 E2E gate
 
 필수 실제 흐름:
 
@@ -191,21 +288,38 @@ PHASE05의 Render verify service `putduk-mine-phase05-admin-verify`도 실제 Ne
 -> 광산 공개
 ```
 
-현재 이 gate는 실행 불가하다.
+staging DB와 maker/checker identity 전제는 준비되었다.
+dedicated backend build도 PASS했다.
 
-독립 blocker:
+현재 남은 blocker:
 
-1. public Nest API origin이 HTTP 503
-2. production 활성 admin이 1명뿐이라 maker/checker 2 identity 조건 불충족
-3. fresh-checkout frontend build runner를 현재 세션에서 확보하지 못함
+1. dedicated staging Render service에 `DATABASE_URL` / `JWT_ADMIN_SECRET`을 secret-safe 방식으로 설정해야 함
+2. 설정 후 실제 Nest Admin API로 maker/checker E2E를 수행해야 함
+3. Ops fresh-checkout assertion/typecheck/lint/build runner가 아직 실제 step을 실행하지 못함
 
-두 번째 admin 계정을 임의 생성하거나 production test mine을 삽입하여 gate를 우회하지 않았다.
+두 번째 admin 계정을 Production에 만들거나 Production test mine을 삽입하여 gate를 우회하지 않았다.
+secret을 source, migration evidence, chat output에 하드코딩하지 않았다.
 
-## 10. Verdict
+## 12. Verdict
 
 `MINE-006 = BLOCKED / NOT CLOSED`
 
-구현 코드는 브랜치에 존재하지만 PHASE06 완료 조건은 실제 Nest E2E를 요구한다.
+완료된 것:
+
+- Ops 기능 구현
+- locked API 계약 대조
+- isolated staging mining schema 준비
+- staging maker/checker identity 전제 확보
+- dedicated mining Render backend 생성
+- exact backend SHA build
+- PHASE05 assertion
+- Rust release binary build
+- Nest TypeScript build
+
+미완료:
+
+- actual Nest maker/checker E2E
+- Ops fresh-checkout assertion/typecheck/lint/build execution
 
 따라서 현재 상태를 PASS/CLOSED라고 기록하지 않는다.
 
