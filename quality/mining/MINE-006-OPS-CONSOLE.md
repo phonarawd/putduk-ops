@@ -4,7 +4,9 @@
 - 상태: **BLOCKED / NOT CLOSED**
 - Ops repo: `phonarawd/putduk-ops`
 - Ops branch: `phase/mine-ops-console-20260921`
-- Ops HEAD: `87b2c2145bda14bf4cc3c7968a0bc205cacb877d`
+- Ops PHASE06 application source authority: `87b2c2145bda14bf4cc3c7968a0bc205cacb877d`
+- closure evidence refresh commit: `6969a4e711de63700091b5348b69235a14cd3eb8`
+- verify workflow manual-only commit: `88095d8968e1b0c2acd5541f46c1da6030d7565b`
 - exact base: `070c98e7b28a37c0a615baac18ebd9631ceab2ce`
 - Backend API authority: `phonarawd/AI-Profit-OS`
 - Backend branch: `phase/mine-admin-api-20260921`
@@ -127,17 +129,19 @@ echo PHASE06_VERIFY_OK
 
 현재 GitHub Actions CI 한도/runner 계층 문제로 canonical workflow가 step 실행 전에 종료된다.
 
-현재 Ops HEAD의 workflow run:
+확인한 주요 run:
 
-- run: `35530390739`
-- SHA: `87b2c2145bda14bf4cc3c7968a0bc205cacb877d`
-- 재실행 attempt 포함 반복 확인
-- job status: failure
-- `steps=null`
+- run `35530390739` @ `87b2c2145bda14bf4cc3c7968a0bc205cacb877d`
+- rerun attempt도 zero-step failure
+- run `35536471261` @ `6969a4e711de63700091b5348b69235a14cd3eb8`
+- 최신 run도 약 3초 안에 종료
+- verify job: `steps=null`
 - 실제 `npm ci` / assertion / typecheck / lint / build는 시작되지 않음
 
 따라서 이 failure는 source-code failure로 판정하지 않는다.
 동시에 실제 명령이 실행되지 않았으므로 PASS로도 인정하지 않는다.
+
+CI 한도가 없는 동안 문서 커밋마다 의미 없는 실패 run을 만들지 않도록 `phase06-verify`는 `workflow_dispatch` 수동 실행 전용으로 복구했다.
 
 ## 7. Render 대체 runner 조사
 
@@ -155,7 +159,44 @@ GitHub Actions quota를 우회하기 위해 Render fresh runner를 여러 방식
 한 probe는 앞선 실패 이후 shell이 계속 진행되어 문자열 `PHASE06_VERIFY_OK`를 출력했으나 `set -e`가 없던 잘못된 probe였다.
 이 marker는 **무효**로 처리했으며 Gate PASS 증거로 사용하지 않는다.
 
-## 8. Historical fresh-build baseline evidence
+Vercel workspace에도 `putduk-ops` Git 프로젝트가 없어 current private repo checkout 대체 runner로 사용할 수 없었다.
+
+## 8. Current-source direct contract audit
+
+GitHub connector가 보존한 current implementation SHA의 원본 source를 line-addressable 상태로 직접 대조했다.
+
+검증 대상 blob:
+
+- assertion: `8962926bf7dfd1f7b78baad9951b2a4984d87114`
+- `lib/admin/mining.ts`: `ce1e7cb57cf5609b2bfdcafc792ce40b34490113`
+- `lib/admin/client.ts`: `6b39828eb7660b0cdb2e017c9364ed5ff8647bcb`
+- `app/api/v1/[...path]/route.ts`: `0c917e37a6d173516ca7fb88266484a707d77996`
+- `app/admin-app.tsx`: `31a10437e711d46f08ea66552ccd50e5891c4785`
+- `app/admin-screens/mining-screen.tsx`: `796298d930495468f8ae33de5aafe7004ff3c65b`
+- `app/mining.css`: `799242b2f652cd36fcf60413d9c10b0c3b48b5f9`
+
+직접 대조 결과:
+
+- locked PHASE05 mining route strings 존재
+- `Idempotency-Key` 존재
+- 두 mining kill switch만 사용
+- same-origin proxy header forwarding 존재
+- 필수 Mine OS navigation/route 존재
+- 고액운용은 `준비 중` placeholder이며 fake mutation 없음
+- `selected.createdByAdminId === adminId` maker guard 존재
+- `작성자는 승인할 수 없음` UX 존재
+- server error branch와 성공 이후 notification 구조 존재
+- `서버가 성공하기 전에는 완료로 표시하지 않습니다` 존재
+- mining client/screen/admin shell에 Supabase 직접 접근 문자열 없음
+- mining client/screen/admin shell에 Vercel 의존 문자열 없음
+- mining client에 high-value/large-position/whale 임의 API 문자열 없음
+- 한국어 운영 상태 label 존재
+- Mineral Luxury light/dark theme token 존재
+
+이 검사는 current source 계약을 직접 확인하는 보강 증거다.
+그러나 canonical workflow의 실제 Node assertion/typecheck/lint/build 실행 자체를 대체하지 않으므로 Gate 2 PASS로 승격하지 않는다.
+
+## 9. Historical fresh-build baseline evidence
 
 과거 `putduk-ops`의 GitHub Actions 성공 run을 확인했다.
 
@@ -171,12 +212,12 @@ GitHub Actions quota를 우회하기 위해 Render fresh runner를 여러 방식
 이는 full-repo fresh-checkout/build 파이프라인의 과거 정상 동작 증거다.
 다만 현재 HEAD 검증은 아니므로 canonical Gate 2의 대체 PASS로 단독 사용하지 않는다.
 
-`8e796f4...`에서 현재 `87b2c214...`까지 package manifest와 lockfile은 변경되지 않았다.
+`8e796f4...`에서 PHASE06 application authority `87b2c214...`까지 package manifest와 lockfile은 변경되지 않았다.
 변경 범위는 PHASE06 실행 코드/검증/문서 14개 파일이다.
 
-현재 HEAD와 직전 `f5ec9c1b...`의 차이는 `.github/workflows/phase06-verify.yml` push trigger 3줄뿐이며 애플리케이션 source 차이는 없다.
+`87b2c214...`와 직전 `f5ec9c1b...`의 차이는 `.github/workflows/phase06-verify.yml` push trigger 3줄뿐이며 애플리케이션 source 차이는 없다.
 
-## 9. Dedicated staging backend
+## 10. Dedicated staging backend
 
 Render staging:
 
@@ -201,7 +242,7 @@ runtime에서 PHASE05 mining Admin API route가 등록되고 AdminGuard가 활�
 
 Production Render service/branch는 PHASE06 검증을 위해 변경하지 않았다.
 
-## 10. Staging DB / identity 준비와 정리
+## 11. Staging DB / identity 준비와 정리
 
 실제 E2E 대상 staging Supabase:
 
@@ -223,7 +264,7 @@ E2E를 위해 staging 전용 maker/checker identity와 ephemeral DB bootstrap을
 
 Production DB/admin identity/test mine은 변경하지 않았다.
 
-## 11. Real maker/checker E2E — PASS
+## 12. Real maker/checker E2E — PASS
 
 실제 dedicated staging Nest API를 통한 흐름을 실행했다.
 
@@ -247,7 +288,7 @@ PHASE06_STAGING_E2E_PASS
 
 따라서 **Gate 1은 PASS**다.
 
-## 12. E2E 과정에서 발견한 backend 결함과 수정
+## 13. E2E 과정에서 발견한 backend 결함과 수정
 
 실제 E2E 중 `POST /api/v1/admin/mines`가 PostgreSQL 오류로 500을 반환했다.
 
@@ -276,12 +317,14 @@ E2E 전용 self-test/bootstrap source는 이후 제거했고 clean backend valid
 
 실제 audit typing bugfix는 clean tree에 유지한다.
 
-## 13. Closure gates
+## 14. Closure gates
 
 | Gate | 상태 | 증거 |
 | --- | --- | --- |
 | staging maker/checker E2E | **PASS** | `PHASE06_STAGING_E2E_PASS` |
-| Ops current-HEAD fresh-checkout verify | **BLOCKED** | GitHub Actions quota/runner zero-step failure; Render private-repo checkout unavailable |
+| Ops current-source contract direct audit | **PASS (보강증거)** | current source blob direct inspection |
+| historical full fresh-checkout build baseline | **PASS (보강증거)** | run `35116115057` @ `8e796f4...` |
+| Ops current-HEAD canonical fresh-checkout verify | **BLOCKED** | GitHub Actions quota/runner zero-step failure; Render/Vercel private-repo checkout unavailable |
 
 Gate 2 canonical 성공 조건은 현재도 다음 marker다.
 
@@ -289,9 +332,9 @@ Gate 2 canonical 성공 조건은 현재도 다음 marker다.
 PHASE06_VERIFY_OK
 ```
 
-실제 current-HEAD fresh checkout에서 assertion/typecheck/lint/build가 모두 성공한 뒤에만 이 marker를 인정한다.
+실제 current implementation fresh checkout에서 assertion/typecheck/lint/build가 모두 성공한 뒤에만 이 marker를 인정한다.
 
-## 14. Verdict
+## 15. Verdict
 
 `MINE-006 = BLOCKED / NOT CLOSED`
 
@@ -299,6 +342,8 @@ PHASE06_VERIFY_OK
 
 - Ops 기능 구현
 - locked API 계약 대조
+- current-source direct contract audit
+- historical clean fresh-build baseline 확인
 - dedicated staging backend build/runtime 확인
 - real maker/checker E2E
 - maker self-approval 409 거부 확인
@@ -308,10 +353,10 @@ PHASE06_VERIFY_OK
 
 남은 closure blocker:
 
-- **Ops current-HEAD fresh-checkout assertion/typecheck/lint/build 실행 성공 및 `PHASE06_VERIFY_OK` 확보**
+- **Ops current implementation fresh-checkout assertion/typecheck/lint/build 실행 성공 및 `PHASE06_VERIFY_OK` 확보**
 
 GitHub Actions quota/runner blocker를 source failure로 오판하지 않는다.
-과거 baseline build 성공이나 실패 뒤 출력된 marker를 Gate 2 PASS로 승격하지 않는다.
+과거 baseline build 성공, direct source audit, 실패 뒤 출력된 marker 중 어느 것도 canonical Gate 2 PASS로 잘못 승격하지 않는다.
 
 두 closure gate가 모두 PASS하기 전에는 CLOSED로 기록하지 않는다.
 PHASE07은 시작하지 않는다.
