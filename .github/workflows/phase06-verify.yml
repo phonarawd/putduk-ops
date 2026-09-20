@@ -2,6 +2,9 @@ name: phase06-verify
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - phase/mine-ops-console-20260921
 
 permissions:
   contents: read
