@@ -1,0 +1,113 @@
+{
+  "contractVersion": "2026-09-20.mine-v1",
+  "apiPrefix": "/api/v1",
+  "wireRules": {
+    "timestamps": "UTC_ISO8601",
+    "money": "DECIMAL_STRING_NO_EXPONENT",
+    "rates": "DAILY_RATIO_DECIMAL_STRING",
+    "mutationIdempotencyHeader": "Idempotency-Key",
+    "userVisibleInternalCodes": false,
+    "pagination": {
+      "cursorParam": "cursor",
+      "limitParam": "limit"
+    }
+  },
+  "statuses": {
+    "mine": {
+      "READY": "준비",
+      "ACTIVE": "가동",
+      "NEW_POSITIONS_PAUSED": "신규운용중지",
+      "PAUSED": "일시정지",
+      "ENDED": "종료"
+    },
+    "position": {
+      "START_PENDING": "시작대기",
+      "ACTIVE": "운용중",
+      "DECREASE_PENDING": "감액처리중",
+      "END_PENDING": "종료처리중",
+      "ENDED": "종료"
+    },
+    "settlement": {
+      "CALC_PENDING": "계산대기",
+      "CALCULATED": "계산완료",
+      "LEDGER_POSTED": "원장반영완료",
+      "FAILED": "실패",
+      "REVIEW_REQUIRED": "검토필요"
+    },
+    "rateVersion": {
+      "DRAFT": "초안",
+      "APPROVAL_PENDING": "승인대기",
+      "SCHEDULED": "예약",
+      "ACTIVE": "적용중",
+      "ENDED": "종료"
+    },
+    "trial": {
+      "NOT_STARTED": "미시작",
+      "ACTIVE": "진행중",
+      "COMPLETED": "완료",
+      "EXPIRED": "만료"
+    },
+    "highValueReview": {
+      "PENDING": "검토대기",
+      "APPROVED": "승인",
+      "REJECTED": "거절",
+      "CANCELLED": "취소"
+    }
+  },
+  "userApi": {
+    "listMines": { "method": "GET", "path": "/api/v1/mines" },
+    "getMine": { "method": "GET", "path": "/api/v1/mines/:mineId" },
+    "getMyMiningSummary": { "method": "GET", "path": "/api/v1/mining/me/summary" },
+    "listMyPositions": { "method": "GET", "path": "/api/v1/mining/me/positions" },
+    "getMyPosition": { "method": "GET", "path": "/api/v1/mining/me/positions/:positionId" },
+    "startPosition": { "method": "POST", "path": "/api/v1/mining/positions/start", "idempotent": true },
+    "increasePosition": { "method": "POST", "path": "/api/v1/mining/positions/:positionId/increase", "idempotent": true },
+    "decreasePosition": { "method": "POST", "path": "/api/v1/mining/positions/:positionId/decrease", "idempotent": true },
+    "endPosition": { "method": "POST", "path": "/api/v1/mining/positions/:positionId/end", "idempotent": true },
+    "listMySettlements": { "method": "GET", "path": "/api/v1/mining/me/settlements" },
+    "getTrialStatus": { "method": "GET", "path": "/api/v1/mining/trial" },
+    "startTrial": { "method": "POST", "path": "/api/v1/mining/trial/start", "idempotent": true }
+  },
+  "adminApi": {
+    "listMines": { "method": "GET", "path": "/api/v1/admin/mines" },
+    "createMine": { "method": "POST", "path": "/api/v1/admin/mines", "idempotent": true },
+    "getMine": { "method": "GET", "path": "/api/v1/admin/mines/:mineId" },
+    "updateMine": { "method": "PATCH", "path": "/api/v1/admin/mines/:mineId", "idempotent": true },
+    "publishMine": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/publish", "idempotent": true },
+    "pauseNewPositions": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/pause-new-positions", "idempotent": true },
+    "pauseMine": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/pause", "idempotent": true },
+    "resumeMine": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/resume", "idempotent": true },
+    "endMine": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/end", "idempotent": true },
+    "listRateVersions": { "method": "GET", "path": "/api/v1/admin/mines/:mineId/rates" },
+    "createRateVersion": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/rates", "idempotent": true },
+    "updateRateVersion": { "method": "PATCH", "path": "/api/v1/admin/mines/:mineId/rates/:rateVersionId", "idempotent": true },
+    "requestRateApproval": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/rates/:rateVersionId/request-approval", "idempotent": true },
+    "approveRateVersion": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/rates/:rateVersionId/approve", "idempotent": true },
+    "scheduleRateVersion": { "method": "POST", "path": "/api/v1/admin/mines/:mineId/rates/:rateVersionId/schedule", "idempotent": true },
+    "listPositions": { "method": "GET", "path": "/api/v1/admin/mining/positions" },
+    "getPosition": { "method": "GET", "path": "/api/v1/admin/mining/positions/:positionId" },
+    "listSettlements": { "method": "GET", "path": "/api/v1/admin/mining/settlements" },
+    "getSettlement": { "method": "GET", "path": "/api/v1/admin/mining/settlements/:settlementId" },
+    "retrySettlement": { "method": "POST", "path": "/api/v1/admin/mining/settlements/:settlementId/retry", "idempotent": true },
+    "getTrialConfig": { "method": "GET", "path": "/api/v1/admin/mining/trial-config" },
+    "updateTrialConfig": { "method": "PATCH", "path": "/api/v1/admin/mining/trial-config", "idempotent": true },
+    "listHighValueReviews": { "method": "GET", "path": "/api/v1/admin/mining/high-value-reviews" },
+    "getHighValueReview": { "method": "GET", "path": "/api/v1/admin/mining/high-value-reviews/:reviewId" },
+    "approveHighValueReview": { "method": "POST", "path": "/api/v1/admin/mining/high-value-reviews/:reviewId/approve", "idempotent": true },
+    "rejectHighValueReview": { "method": "POST", "path": "/api/v1/admin/mining/high-value-reviews/:reviewId/reject", "idempotent": true }
+  },
+  "fieldNames": {
+    "mineId": "mineId",
+    "positionId": "positionId",
+    "rateVersionId": "rateVersionId",
+    "settlementId": "settlementId",
+    "trialSessionId": "trialSessionId",
+    "highValueReviewId": "highValueReviewId",
+    "principalAmount": "principalAmount",
+    "assetCode": "assetCode",
+    "dailyRate": "dailyRate",
+    "effectiveAt": "effectiveAt",
+    "accruedProfitAmount": "accruedProfitAmount",
+    "nextSettlementAt": "nextSettlementAt"
+  }
+}
