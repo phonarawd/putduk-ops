@@ -12,6 +12,8 @@ import {
   positionStatusLabel,
   rateStatusLabel,
   settlementStatusLabel,
+  highValueStatusLabel,
+  type HighValueReview,
   type MineDetail,
   type MineSummary,
   type MiningSwitch,
@@ -49,6 +51,7 @@ export function MiningScreen({ route, adminId, notify }: Props) {
   if (route === "/mine/rates") return <RateManagement adminId={adminId} notify={notify} />;
   if (route === "/mine/positions") return <PositionManagement />;
   if (route === "/mine/settlements") return <SettlementManagement notify={notify} />;
+  if (route === "/mine/high-value") return <HighValueManagement notify={notify} />;
   if (route === "/mine/system") return <MiningSystemControl notify={notify} />;
   return null;
 }
@@ -58,14 +61,16 @@ function MiningToday() {
   const [failed, setFailed] = useState<SettlementSummary[] | null>(null);
   const [review, setReview] = useState<SettlementSummary[] | null>(null);
   const [approvalCount, setApprovalCount] = useState<number | null>(null);
+  const [highValuePending, setHighValuePending] = useState<HighValueReview[] | null>(null);
   const [error, setError] = useState("");
 
   const load = async () => {
     setError("");
-    const [mineRes, failedRes, reviewRes] = await Promise.all([
+    const [mineRes, failedRes, reviewRes, highValueRes] = await Promise.all([
       miningAdmin.listMines(),
       miningAdmin.listSettlements({ status: "FAILED", limit: 100 }),
       miningAdmin.listSettlements({ status: "REVIEW_REQUIRED", limit: 100 }),
+      miningAdmin.listHighValueReviews({ status: "PENDING", limit: 100 }),
     ]);
 
     if (!mineRes.ok) {
@@ -73,6 +78,7 @@ function MiningToday() {
       setFailed(failedRes.ok ? failedRes.data.items : []);
       setReview(reviewRes.ok ? reviewRes.data.items : []);
       setApprovalCount(0);
+      setHighValuePending(highValueRes.ok ? highValueRes.data.items : []);
       setError(miningFailureMessage(mineRes));
       return;
     }
@@ -80,6 +86,7 @@ function MiningToday() {
     setMines(mineRes.data.items);
     setFailed(failedRes.ok ? failedRes.data.items : []);
     setReview(reviewRes.ok ? reviewRes.data.items : []);
+    setHighValuePending(highValueRes.ok ? highValueRes.data.items : []);
 
     const rateResults = await Promise.all(
       mineRes.data.items.map((mine) => miningAdmin.listRates(mine.mineId)),
@@ -98,7 +105,7 @@ function MiningToday() {
     void load();
   }, []);
 
-  const loading = mines == null || failed == null || review == null || approvalCount == null;
+  const loading = mines == null || failed == null || review == null || approvalCount == null || highValuePending == null;
   const settlementAttention = (failed?.length ?? 0) + (review?.length ?? 0);
 
   return (
@@ -126,10 +133,11 @@ function MiningToday() {
         <TaskCard href="/money/withdrawals" label="출금" value="대기열 열기" note="기존 출금 운영 화면" />
         <TaskCard href="/identity" label="KYC" value="대기열 열기" note="기존 본인 확인 화면" />
         <TaskCard
+          href="/mine/high-value"
           label="고액운용"
-          value="준비 중"
-          note="고액운용 검토 기능은 아직 제공되지 않아 처리 버튼을 노출하지 않습니다."
-          muted
+          value={loading ? "확인 중" : `${highValuePending?.length ?? 0}건`}
+          note="승인 또는 거절이 필요한 검토 요청"
+          alert={(highValuePending?.length ?? 0) > 0}
         />
         <TaskCard
           href="/mine/settlements"
@@ -202,6 +210,162 @@ function TaskCard({
   const className = `mine-task-card${muted ? " is-muted" : ""}${alert ? " is-alert" : ""}`;
   if (!href) return <div className={className}>{content}</div>;
   return <Link className={className} href={navHref(href)}>{content}</Link>;
+}
+
+function HighValueManagement({ notify }: { notify: Notify }) {
+  const [items, setItems] = useState<HighValueReview[] | null>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const [reason, setReason] = useState("고액운용 검토 정책에 따른 판단입니다.");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const selected = useMemo(
+    () => items?.find((item) => item.reviewId === selectedId) ?? null,
+    [items, selectedId],
+  );
+
+  const load = async () => {
+    setError("");
+    const res = await miningAdmin.listHighValueReviews({ status: "PENDING", limit: 100 });
+    if (!res.ok) {
+      setItems([]);
+      setError(miningFailureMessage(res));
+      return;
+    }
+    setItems(res.data.items);
+    if (selectedId && res.data.items.some((item) => item.reviewId === selectedId)) return;
+    setSelectedId(res.data.items[0]?.reviewId ?? "");
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const decide = async (decision: "approve" | "reject") => {
+    if (!selected || busy) return;
+    if (reason.trim().length < 8) {
+      const message = "사유를 8자 이상 입력해 주세요.";
+      setError(message);
+      notify(message, false);
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    const res = decision === "approve"
+      ? await miningAdmin.approveHighValueReview(selected.reviewId, reason.trim())
+      : await miningAdmin.rejectHighValueReview(selected.reviewId, reason.trim());
+    setBusy(false);
+
+    if (!res.ok) {
+      const message = miningFailureMessage(res);
+      setError(message);
+      notify(message, false);
+      return;
+    }
+
+    notify(decision === "approve" ? "고액운용 요청을 승인했습니다." : "고액운용 요청을 거절했습니다.");
+    await load();
+  };
+
+  return (
+    <div className="mine-stack">
+      <section className="mine-hero">
+        <div>
+          <small>HIGH VALUE CONTROL</small>
+          <h2>고액운용 검토</h2>
+          <p>Backend가 생성한 검토 요청만 표시합니다. 승인·거절 결과가 최종 판단입니다.</p>
+        </div>
+        <button type="button" className="mine-button mine-button-ghost" onClick={() => void load()} disabled={busy}>
+          새로고침
+        </button>
+      </section>
+
+      {error ? <MineError message={error} /> : null}
+
+      {items == null ? (
+        <section className="panel"><p className="ops-hint">검토 요청을 불러오는 중…</p></section>
+      ) : items.length === 0 ? (
+        <section className="panel"><MineEmpty title="대기 중인 고액운용 요청이 없습니다" body="새 검토 요청이 생기면 이 화면에 표시됩니다." /></section>
+      ) : (
+        <div className="mine-two-col">
+          <section className="panel">
+            <div className="panelhead">
+              <div>
+                <h2>검토 대기열</h2>
+                <p>{items.length}건</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>광산</th><th>요청 금액</th><th>기준 금액</th><th>요청 시각</th><th>상태</th></tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.reviewId}
+                      onClick={() => setSelectedId(item.reviewId)}
+                      style={{ cursor: "pointer" }}
+                      aria-selected={selectedId === item.reviewId}
+                    >
+                      <td><b>{item.mineName ?? item.mineCode ?? "광산"}</b><small className="mine-cell-note">{shortId(item.reviewId)}</small></td>
+                      <td>{formatMoney(item.requestedPrincipalUsdt)} USDT</td>
+                      <td>{formatMoney(item.thresholdUsdt)} USDT</td>
+                      <td>{formatDate(item.requestedAt)}</td>
+                      <td><span className="mine-status is-pending">{highValueStatusLabel(item.status)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panelhead">
+              <div>
+                <h2>검토 상세</h2>
+                <p>선택한 요청의 서버 기준 정보를 확인합니다.</p>
+              </div>
+            </div>
+
+            {!selected ? (
+              <MineEmpty title="검토 요청을 선택하세요" body="왼쪽 대기열에서 요청을 선택하면 상세 정보가 표시됩니다." />
+            ) : (
+              <>
+                <div className="mine-kv-grid">
+                  <MineKv label="광산" value={selected.mineName ?? selected.mineCode ?? "광산"} />
+                  <MineKv label="요청 금액" value={`${formatMoney(selected.requestedPrincipalUsdt)} USDT`} />
+                  <MineKv label="검토 기준" value={`${formatMoney(selected.thresholdUsdt)} USDT`} />
+                  <MineKv label="요청 시각" value={formatDate(selected.requestedAt)} />
+                  <MineKv label="운용 포지션" value={shortId(selected.positionId)} />
+                  <MineKv label="사용자" value={shortId(selected.userId)} />
+                </div>
+
+                <MineField label="검토 사유" wide>
+                  <textarea
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    rows={4}
+                    placeholder="승인 또는 거절 사유"
+                  />
+                </MineField>
+
+                <div className="mine-actions">
+                  <button type="button" className="mine-button" onClick={() => void decide("approve")} disabled={busy}>
+                    {busy ? "처리 중…" : "승인"}
+                  </button>
+                  <button type="button" className="mine-button mine-button-danger" onClick={() => void decide("reject")} disabled={busy}>
+                    거절
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MineManagement({ notify }: { notify: Notify }) {
