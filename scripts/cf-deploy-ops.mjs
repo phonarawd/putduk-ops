@@ -15,7 +15,7 @@ const generatedConfig = join(root, "dist/server/wrangler.json");
 
 const WORKER_NAME = process.env.OPS_WORKER_NAME || "ai-profit-ops";
 const ACCOUNT_ID =
-  process.env.CLOUDFLARE_ACCOUNT_ID || "190a1476a068cfe96dfe1029877587ef";
+  process.env.CLOUDFLARE_ACCOUNT_ID || "9dc502d4ef06b3b5374591de6e6933ca";
 const ORIGIN_SMOKE =
   process.env.OPS_ORIGIN_SMOKE ||
   "https://ai-profit-ops.ebay-adapter.workers.dev";
@@ -88,7 +88,7 @@ run(process.execPath, [
   "--keep-vars",
 ]);
 
-const zoneId = process.env.CLOUDFLARE_ZONE_ID || "a8f07448b300cf7f0215a3bbb9cf705e";
+const zoneId = process.env.CLOUDFLARE_ZONE_ID || "c9e6c93451c3c2e107a1eca511bedaba";
 if (process.env.CLOUDFLARE_API_TOKEN) {
   const purge = await fetch(
     `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
