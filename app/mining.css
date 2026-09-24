@@ -548,3 +548,84 @@
     width: 100%;
   }
 }
+
+
+/* Operator-controlled theme override: independent of OS preference. */
+.mine-os-shell .mine-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--mine-line);
+  border-radius: 10px;
+  background: var(--mine-paper);
+  color: var(--mine-graphite);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.mine-os-shell .mine-theme-toggle svg { width: 16px; height: 16px; }
+.mine-os-shell.mine-theme-light {
+  --mine-white: #f7f3e8;
+  --mine-paper: #fffdf8;
+  --mine-gold: #a7782d;
+  --mine-gold-soft: #f0e5cf;
+  --mine-graphite: #171a18;
+  --mine-muted: #68675f;
+  --mine-line: #ded7c7;
+  --mine-danger: #8f4036;
+  --mine-danger-soft: #f7e8e4;
+  --mine-ok: #2f6a50;
+  --mine-ok-soft: #e8f1eb;
+  background: radial-gradient(circle at 92% 3%, rgba(167,120,45,.12), transparent 25rem), #f7f3e8;
+}
+.mine-os-shell.mine-theme-dark {
+  --mine-white: #171918;
+  --mine-paper: #212422;
+  --mine-gold: #d7ac62;
+  --mine-gold-soft: #3b3123;
+  --mine-graphite: #f0eee8;
+  --mine-muted: #aaa79e;
+  --mine-line: #393b38;
+  --mine-danger: #e39a8f;
+  --mine-danger-soft: #402a27;
+  --mine-ok: #9bc7ad;
+  --mine-ok-soft: #25372d;
+  background: radial-gradient(circle at 92% 3%, rgba(215,172,98,.1), transparent 25rem), #171918;
+}
+.mine-os-shell.mine-theme-dark > main > header,
+.mine-os-shell.mine-theme-dark .panel,
+.mine-os-shell.mine-theme-dark .mine-list-card,
+.mine-os-shell.mine-theme-dark .mine-task-card,
+.mine-os-shell.mine-theme-dark .mine-button-ghost,
+.mine-os-shell.mine-theme-dark .mine-field input,
+.mine-os-shell.mine-theme-dark .mine-field select,
+.mine-os-shell.mine-theme-dark .mine-field textarea,
+.mine-os-shell.mine-theme-dark .mine-filter-row input,
+.mine-os-shell.mine-theme-dark .mine-filter-row select,
+.mine-os-shell.mine-theme-dark .mine-switch {
+  background: #212422;
+  color: var(--mine-graphite);
+}
+.mine-os-shell.mine-theme-dark .mine-hero { background: linear-gradient(135deg, #262a28, #31291f); }
+.mine-os-shell.mine-theme-dark .mine-task-card.is-muted,
+.mine-os-shell.mine-theme-dark .mine-kv { background: #1c201e; }
+.mine-os-shell.mine-theme-dark table tbody tr:hover,
+.mine-os-shell.mine-theme-dark .mine-row-selected { background: #31291f; }
+.mine-os-shell.mine-theme-light > main > header,
+.mine-os-shell.mine-theme-light .panel,
+.mine-os-shell.mine-theme-light .mine-list-card,
+.mine-os-shell.mine-theme-light .mine-task-card,
+.mine-os-shell.mine-theme-light .mine-button-ghost,
+.mine-os-shell.mine-theme-light .mine-field input,
+.mine-os-shell.mine-theme-light .mine-field select,
+.mine-os-shell.mine-theme-light .mine-field textarea,
+.mine-os-shell.mine-theme-light .mine-filter-row input,
+.mine-os-shell.mine-theme-light .mine-filter-row select,
+.mine-os-shell.mine-theme-light .mine-switch {
+  background: #fffdf8;
+  color: var(--mine-graphite);
+}
+.mine-os-shell.mine-theme-light .mine-hero { background: linear-gradient(135deg, #fffdf8, #f2ebdc); }
