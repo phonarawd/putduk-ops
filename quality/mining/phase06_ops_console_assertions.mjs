@@ -85,11 +85,22 @@ for (const route of [
   requireText(shell, route, "mine OS route registration");
 }
 
-// High-value review belongs to PHASE17: show an unavailable state, never fake a mutation.
-requireText(screen, 'label="고액운용"', "high-value placeholder");
-requireText(screen, 'value="준비 중"', "high-value unavailable status");
-requireText(screen, "처리 버튼을 노출하지 않습니다", "high-value no-fake-action copy");
-forbid(miningClient, /high[-_]?value|large[-_]?position|whale/i, "no invented high-value backend API");
+// High-value review is now an actual Backend contract. Verify the connected Ops surface,
+ // while still forbidding direct Supabase access and optimistic mutation state.
+requireText(screen, 'label="고액운용"', "high-value navigation/task label");
+requireText(screen, '"/mine/high-value"', "high-value route surface");
+requireText(miningClient, "listHighValueReviews", "high-value list client");
+requireText(miningClient, "approveHighValueReview", "high-value approve client");
+requireText(miningClient, "rejectHighValueReview", "high-value reject client");
+requireText(screen, "PENDING", "high-value pending state");
+requireText(screen, "거절 사유", "high-value rejection reason field");
+
+ // Trial configuration is also a server-owned Ops contract.
+requireText(screen, 'data-testid="mine-trial-config"', "trial config screen");
+requireText(screen, '"/mine/trial"', "trial config route");
+requireText(miningClient, "getTrialConfig", "trial config GET client");
+requireText(miningClient, "updateTrialConfig", "trial config PATCH client");
+requireText(screen, "변경 사유는 8자 이상 입력해 주세요.", "trial config reason validation");
 
 // Maker/checker and server-authoritative success handling.
 requireText(screen, "selected.createdByAdminId === adminId", "maker/checker self-approval guard");
