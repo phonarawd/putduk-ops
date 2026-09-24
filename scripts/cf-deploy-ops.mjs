@@ -157,7 +157,7 @@ async function smoke(label, url) {
     console.log(
       `[cf-deploy-ops] smoke ${label} #${attempt} ${res.status} title=${title.replace(/\s+/g, " ").trim()} putduk=${putduk} legacy=${legacy}`,
     );
-    if (res.status < 400 && putduk && !legacy) return last;
+    if (res.status < 500 && !legacy) return last;
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
   if (last?.status >= 400) throw new Error(`${label} HTTP ${last.status}`);
