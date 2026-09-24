@@ -1,6 +1,8 @@
 name: phase06-verify
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
