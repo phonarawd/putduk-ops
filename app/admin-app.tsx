@@ -12,6 +12,7 @@ import {
   Menu,
   Package,
   Settings,
+  ShieldCheck,
   Sparkles,
   Sun,
   Moon,
