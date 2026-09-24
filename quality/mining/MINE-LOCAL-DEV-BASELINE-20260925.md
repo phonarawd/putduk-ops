@@ -12,7 +12,7 @@
 
 ## 로컬 API
 
-로컬 개발에서는 Supabase Cloud에 직접 연결하지 않는다.
+로컬 개발에서는 Supabase Cloud 연결은 기존대로 유지한다. 다만 이 단계의 로컬 UI/코드 작업에서는 Production DB를 호출하거나 변경하지 않는다.
 
 기본 API 원점:
 
