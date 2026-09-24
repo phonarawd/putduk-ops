@@ -132,6 +132,26 @@ export type SettlementAccrual = {
 
 export type SettlementDetail = SettlementSummary & { accruals: SettlementAccrual[] };
 
+export type HighValueReview = {
+  reviewId: string;
+  positionId: string;
+  userId: string;
+  mineId: string;
+  mineCode?: string;
+  mineName?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | string;
+  requestedPrincipalUsdt: string;
+  thresholdUsdt: string;
+  idempotencyKey: string;
+  approvalRequestId: string | null;
+  reviewedByAdminId: string | null;
+  reviewReason: string | null;
+  requestedAt: string | null;
+  reviewedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type MiningSwitch = { id: string; engaged: boolean };
 
 function requestKey(prefix: string): string {
@@ -215,6 +235,18 @@ export const miningAdmin = {
   retrySettlement(settlementId: string, reason: string): Promise<AdminResult<SettlementDetail>> {
     return mutation("POST", `/admin/mining/settlements/${encodeURIComponent(settlementId)}/retry`, { reason }, "settlement-retry");
   },
+  listHighValueReviews(filters: { mineId?: string; userId?: string; status?: string; limit?: number } = {}): Promise<AdminResult<{ items: HighValueReview[] }>> {
+    return adminFetch("GET", `/admin/mining/high-value-reviews${qs({ ...filters, limit: filters.limit ?? 100 })}`);
+  },
+  getHighValueReview(reviewId: string): Promise<AdminResult<HighValueReview>> {
+    return adminFetch("GET", `/admin/mining/high-value-reviews/${encodeURIComponent(reviewId)}`);
+  },
+  approveHighValueReview(reviewId: string, reason: string): Promise<AdminResult<HighValueReview>> {
+    return mutation("POST", `/admin/mining/high-value-reviews/${encodeURIComponent(reviewId)}/approve`, { reason }, "high-value-approve");
+  },
+  rejectHighValueReview(reviewId: string, reason: string): Promise<AdminResult<HighValueReview>> {
+    return mutation("POST", `/admin/mining/high-value-reviews/${encodeURIComponent(reviewId)}/reject`, { reason }, "high-value-reject");
+  },
   listSwitches(): Promise<AdminResult<{ version: 1; items: MiningSwitch[] }>> {
     return adminFetch("GET", "/admin/system-control/switches");
   },
@@ -249,4 +281,14 @@ export function positionStatusLabel(status: string): string {
 
 export function settlementStatusLabel(status: string): string {
   return SETTLEMENT_STATUS_LABELS[status] ?? "상태 확인 필요";
+}
+
+export function highValueStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    PENDING: "승인 대기",
+    APPROVED: "승인",
+    REJECTED: "거절",
+    CANCELLED: "취소",
+  };
+  return labels[status] ?? "상태 확인 필요";
 }
