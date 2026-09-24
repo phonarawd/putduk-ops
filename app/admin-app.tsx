@@ -13,6 +13,8 @@ import {
   Package,
   Settings,
   Sparkles,
+  Sun,
+  Moon,
   UserRoundCheck,
   UsersRound,
   WalletCards,
@@ -41,29 +43,32 @@ import { KycQueue } from "./admin-screens/kyc-screen";
 import { LoginScreen } from "./admin-screens/login-screen";
 import { MemberLiveExtras } from "./admin-screens/member-live-extras";
 import { MembershipWorkspace, UsersSearch } from "./admin-screens/membership-screen";
+import { MiningScreen } from "./admin-screens/mining-screen";
 import { DepositGuideScreen, KrwDepositQueue, WithdrawQueue } from "./admin-screens/money-live-screen";
 import { PresentationScreen } from "./admin-screens/presentation-screen";
 import { QaBanner, WaitBanner } from "./admin-screens/shared";
 
 const groups = [
-  { label: "상품 목록", href: "/", icon: Package },
+  { label: "오늘 할 일", href: "/", icon: LayoutDashboard },
+  { label: "광산 관리", href: "/mine/mines", icon: Package },
+  { label: "수익률 관리", href: "/mine/rates", icon: Sparkles },
+  { label: "운용 현황", href: "/mine/positions", icon: UsersRound },
+  { label: "정산 관리", href: "/mine/settlements", icon: WalletCards },
+  { label: "시스템 제어", href: "/mine/system", icon: Settings },
   {
-    label: "회원과 상담",
+    label: "회원",
     href: "/users",
     icon: UsersRound,
-    children: [
-      ["회원 목록", "/users"],
-      ["등급별 하루 기회", "/membership/grades"],
-    ],
+    children: [["회원 목록", "/users"]],
   },
   {
-    label: "돈과 거래",
-    href: "/money/deposit-guide",
+    label: "입출금",
+    href: "/money/deposits",
     icon: WalletCards,
     children: [
-      ["입금 안내", "/money/deposit-guide"],
       ["입금 확인", "/money/deposits"],
       ["출금 요청", "/money/withdrawals"],
+      ["입금 안내", "/money/deposit-guide"],
     ],
   },
   { label: "본인 확인", href: "/identity", icon: UserRoundCheck },
@@ -79,15 +84,17 @@ const groups = [
       ["알림 보내기", "/content/messages"],
     ],
   },
-  { label: "화면 진행 시간", href: "/service/display-timing", icon: Settings },
 ];
 
 const foldedGroups = [
   {
-    label: "아직 안 쓰는 메뉴",
-    href: "/support",
+    label: "기존 운영 기반",
+    href: "/catalog",
     icon: ClipboardCheck,
     children: [
+      ["기존 상품 목록", "/catalog"],
+      ["기존 등급 설정", "/membership/grades"],
+      ["화면 진행 시간", "/service/display-timing"],
       ["문의함", "/support"],
       ["퍼뜩 AI 대화", "/conversations/ai"],
       ["전체 거래", "/money/transactions"],
@@ -143,6 +150,17 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const [foldOpen, setFoldOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
+  const [mineTheme, setMineTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    const stored = window.localStorage.getItem("putduk-mine-theme");
+    if (stored === "dark" || stored === "light") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.mineTheme = mineTheme;
+    window.localStorage.setItem("putduk-mine-theme", mineTheme);
+  }, [mineTheme]);
 
   useEffect(() => {
     if (!adapter) return;
@@ -193,25 +211,25 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const all = [...navGroups.flatMap((g) => [...(g.children || []), [g.label, g.href]])];
   const title = (all.find(([, h]) => h === route)?.[0] ||
     (route.startsWith("/users/")
-      ? "회원 기회·등급"
+      ? "회원 상세"
       : route.startsWith("/conversations/ai/")
         ? "AI 대화 상세"
-        : route === "/catalog"
-          ? "상품 목록"
+        : route === "/mine/today"
+          ? "오늘 할 일"
           : known
-            ? "상품 목록"
+            ? active.label
             : "없는 화면")) as string;
   const who = sessionLabel(session);
   const userId = route.startsWith("/users/") ? decodeURIComponent(route.split("/").pop() || "") : "";
 
   return (
-    <div className="admin">
+    <div className={`admin mine-os-shell mine-theme-${mineTheme}`}>
       <aside className={`side ${mobile ? "open" : ""}`}>
-        <div className="brand">
-          <span>퍼</span>
+        <div className="brand mine-brand">
+          <span>◆</span>
           <div>
-            <b>{COPY.brand}</b>
-            <small>{brandModeLabel(origin)}</small>
+            <b>퍼뜩 채굴 운영센터</b>
+            <small>운영 제어센터 · {brandModeLabel(origin)}</small>
           </div>
           <button type="button" onClick={() => setMobile(false)}>
             <X />
@@ -261,7 +279,7 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             data-testid="fold-toggle"
             onClick={() => setFoldOpen((v) => !v)}
           >
-            {foldOpen ? "아직 안 쓰는 메뉴 접기" : "아직 안 쓰는 메뉴"}
+            {foldOpen ? "기존 운영 메뉴 접기" : "기존 운영 메뉴"}
           </button>
           {foldOpen
             ? foldedGroups.map((g) => {
@@ -330,10 +348,19 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             <Menu />
           </button>
           <div className="crumb">
-            <span>{COPY.brand}</span>
+            <span>퍼뜩 채굴 운영센터</span>
             <b>{title}</b>
           </div>
           <div className="topright">
+            <button
+              type="button"
+              className="mine-theme-toggle"
+              aria-label={mineTheme === "dark" ? "밝은 화면으로 전환" : "어두운 화면으로 전환"}
+              onClick={() => setMineTheme((current) => current === "dark" ? "light" : "dark")}
+            >
+              {mineTheme === "dark" ? <Sun /> : <Moon />}
+              <span>{mineTheme === "dark" ? "밝은 화면" : "어두운 화면"}</span>
+            </button>
             {origin.mode === "isolated-qa" && adapter.setStoreReady ? (
               <button
                 type="button"
@@ -341,10 +368,10 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
                 data-testid="qa-store-ready"
                 onClick={() => {
                   adapter.setStoreReady?.(true);
-                  notify("연습용 저장소를 준비됨으로 바꿨어요. 실제 운영 저장이 아닙니다.");
+                  notify("격리 확인용 저장소를 준비 상태로 바꿨습니다. 운영 저장은 아닙니다.");
                 }}
               >
-                연습 저장소 켜기
+                격리 확인 저장소 켜기
               </button>
             ) : null}
             <span className={`healthy ${healthTone(origin, session)}`} data-testid="header-health">
@@ -356,14 +383,15 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
         <div className="body">
           {origin.mode === "isolated-qa" ? <QaBanner>{COPY.isolatedHint}</QaBanner> : null}
           {origin.mode === "waiting" ? <WaitBanner>{origin.reason}</WaitBanner> : null}
-          <div className="pagehead">
+          <div className="pagehead mine-pagehead">
             <div>
               <small>{active.label}</small>
               <h1 data-testid="page-title">{title}</h1>
               <p>{description(route)}</p>
             </div>
           </div>
-          {route === "/" || route === "/catalog" ? <CatalogScreen adapter={adapter} notify={notify} /> : null}
+          {route === "/" || route.startsWith("/mine/") ? <MiningScreen route={route} adminId={session.adminId} notify={notify} /> : null}
+          {route === "/catalog" ? <CatalogScreen adapter={adapter} notify={notify} /> : null}
           {route === "/users" ? <UsersSearch adapter={adapter} /> : null}
           {route.startsWith("/users/") ? (
             <>
@@ -418,14 +446,20 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
 
 function description(r: string) {
   if (!isKnownRoute(r)) return COPY.missingRoute;
-  if (r === "/" || r === "/catalog") return "상품 이름과 세 가지 금액, 공개 범위만 보면 됩니다.";
+  if (r === "/" || r === "/mine/today") return "입출금·본인확인·정산 이상·수익률 승인 등 오늘 확인할 광산 운영 업무입니다.";
+  if (r === "/mine/mines") return "광산의 생성·수정·공개·중지·재개·종료를 실제 관리자 API로 처리합니다.";
+  if (r === "/mine/rates") return "수익률 초안부터 작성자와 다른 승인자의 승인, 예약·적용까지 관리합니다.";
+  if (r === "/mine/positions") return "사용자와 광산별 실제 운용 상태, 원금, 변경 이력을 조회합니다.";
+  if (r === "/mine/settlements") return "정산 결과와 수익 발생 구간을 확인하고 실패·검토필요 건만 재실행합니다.";
+  if (r === "/mine/system") return "전체 신규 운용과 정산을 서버 안전 제어로 중지하거나 해제합니다.";
+  if (r === "/catalog") return "기존 상품 운영 화면입니다. 광산 운영과 분리해 보존합니다.";
   if (r === "/users") return "최근 가입 회원부터 보여 줍니다. 번호로 한 명만 찾을 수도 있어요.";
-  if (r.startsWith("/users/")) return "하루 기회, 추가 지급, 등급, 이 회원 USDT 주소만 다룹니다. 서버가 확인한 결과만 완료입니다.";
-  if (r === "/membership/grades") return "등급마다 하루 기본 기회를 정합니다. 이미 따로 지정된 회원은 그대로 둡니다.";
+  if (r.startsWith("/users/")) return "회원의 기존 운영 정보와 입금 주소를 확인합니다. 서버가 확인한 결과만 완료입니다.";
+  if (r === "/membership/grades") return "기존 등급 운영 기반을 보존합니다.";
   if (r === "/support") return "전체 문의함은 아직 없습니다. 회원을 먼저 찾아 주세요.";
   if (r === "/conversations/ai" || r.startsWith("/conversations/ai/")) return "실제 대화는 권한이 확인되기 전에는 열지 않아요.";
-  if (r === "/money/deposit-guide") return "은행 이름·계좌·예금주는 직접 적습니다. 가짜 숫자를 채워 두지 않아요.";
-  if (r === "/money/deposits") return "대기 중인 원 입금만 확인하고 거절합니다. 환율 칸은 없습니다.";
+  if (r === "/money/deposit-guide") return "은행 이름·계좌·예금주는 직접 적습니다. 확인되지 않은 값을 채워 두지 않아요.";
+  if (r === "/money/deposits") return "대기 중인 원 입금만 확인하고 거절합니다.";
   if (r === "/money/withdrawals") return "대기 중인 출금만 승인·거절합니다.";
   if (r === "/money/transactions") return "거래 내역이 아직 연결되지 않았어요.";
   if (r === "/money/mismatches") return "맞지 않는 금액 목록이 아직 연결되지 않았어요.";
@@ -438,22 +472,28 @@ function description(r: string) {
   if (r === "/safety/alerts") return "이상한 이용 알림이 아직 연결되지 않았어요.";
   if (r === "/safety/cases") return "검토 사건이 아직 연결되지 않았어요.";
   if (r === "/safety/lists") return "차단 목록이 아직 연결되지 않았어요.";
-  if (r === "/safety/limits") return "이용 한도는 아직 연결되지 않았어요. 회원별로 하루 기회는 바꿀 수 있어요.";
-  if (r === "/reports") return "운영 숫자는 확인할 수 없어요. 가짜 차트를 넣지 않았어요.";
+  if (r === "/safety/limits") return "이용 한도는 아직 연결되지 않았어요.";
+  if (r === "/reports") return "기존 운영 현황 영역입니다.";
   if (r === "/staff") return "직원 목록이 아직 연결되지 않았어요.";
-  if (r === "/staff/approvals") return "승인 요청이 아직 연결되지 않았어요.";
+  if (r === "/staff/approvals") return "기존 승인 요청 영역입니다.";
   if (r === "/activity") return "작업 기록이 아직 연결되지 않았어요.";
   if (r === "/activity/access") return "열람 기록이 아직 연결되지 않았어요.";
-  if (r === "/service") return "서비스가 정상인지 지금은 확인할 수 없어요.";
+  if (r === "/service") return "서비스 상태 영역입니다.";
   if (r === "/service/display-timing") return "회원 화면에 보이는 진행 시간만 바꿉니다. 돈과 횟수는 그대로입니다.";
   if (r === "/service/incidents") return "진행 중인 문제 목록이 아직 연결되지 않았어요.";
   if (r === "/service/maintenance") return "점검 일정이 아직 연결되지 않았어요.";
-  if (r === "/service/controls") return "기능 켜기·끄기가 아직 연결되지 않았어요.";
-  return "필요한 정보를 찾은 뒤에만 바꾸고, 서버가 확인한 결과만 완료로 봅니다.";
+  if (r === "/service/controls") return "기존 기능 제어 영역입니다.";
+  return "필요한 정보를 확인한 뒤에만 바꾸고, 서버가 확인한 결과만 완료로 봅니다.";
 }
 
 const KNOWN_EXACT = new Set([
   "/",
+  "/mine/today",
+  "/mine/mines",
+  "/mine/rates",
+  "/mine/positions",
+  "/mine/settlements",
+  "/mine/system",
   "/users",
   "/catalog",
   "/membership/grades",
@@ -481,13 +521,13 @@ export function isKnownRoute(route: string): boolean {
 }
 
 function brandModeLabel(origin: OriginDecision): string {
-  if (origin.mode === "isolated-qa") return "격리 시험";
+  if (origin.mode === "isolated-qa") return "격리 확인";
   if (origin.mode === "waiting") return "연결 대기";
   return "운영 연결";
 }
 
 function healthCaption(origin: OriginDecision, session: AdminSession): string {
-  if (origin.mode === "isolated-qa") return "격리 시험 중";
+  if (origin.mode === "isolated-qa") return "격리 확인 중";
   if (origin.mode === "waiting") return "연결 대기";
   if (origin.mode === "live" && session.connected) {
     return origin.sameOrigin ? "운영 세션 연결됨" : "운영 세션·다른 주소 확인 필요";

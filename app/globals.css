@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 @import "./admin.css";
+@import "./mining.css";
 
 /* Pretendard Regular 한 파일은 한글 퍼·뜩을 깨뜨려 쓰지 않는다. 시스템 한글 글꼴만 사용. */
 

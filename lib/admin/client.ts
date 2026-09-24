@@ -20,7 +20,7 @@ export async function adminFetch<T>(
   method: string,
   path: string,
   body?: unknown,
-  opts?: { csrf?: boolean },
+  opts?: { csrf?: boolean; headers?: Record<string, string> },
 ): Promise<AdminResult<T>> {
   const origin = resolveOrigin();
   if (origin.mode !== "live" || !origin.apiOrigin) {
@@ -36,7 +36,10 @@ export async function adminFetch<T>(
     );
   }
 
-  const headers: Record<string, string> = { accept: "application/json" };
+  const headers: Record<string, string> = {
+    accept: "application/json",
+    ...(opts?.headers ?? {}),
+  };
   if (write) {
     headers["content-type"] = "application/json";
     if (useCsrf) {
