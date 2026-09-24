@@ -90,13 +90,13 @@ run(process.execPath, [
 
 if (process.env.CLOUDFLARE_API_TOKEN) {
   const ACCOUNT = "9dc502d4ef06b3b5374591de6e6933ca";
-  const ZONE = "c9e6c93451c3c2e107a1eca511bedaba";
+  const ZONE = process.env.CLOUDFLARE_ZONE_ID || "c9e6c93451c3c2e107a1eca511bedaba";
   const DOMAIN_API = "https://api.cloudflare.com/client/v4";
   const headers = {
     authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
     "content-type": "application/json",
   };
-  if (ACCOUNT_ID !== ACCOUNT || ZONE !== ZONE) {
+  if (ACCOUNT_ID !== ACCOUNT || ZONE !== "c9e6c93451c3c2e107a1eca511bedaba") {
     console.error("[cf-deploy-ops] refusing non-PUTDUK Cloudflare target");
     process.exit(1);
   }
