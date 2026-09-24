@@ -152,6 +152,15 @@ export type HighValueReview = {
   updatedAt: string | null;
 };
 
+export type MiningTrialConfig = {
+  welcomeKrw: number;
+  profitCapKrw: number;
+  defaultMaxParticipations: number;
+  requiredCapitalKrwMin: number;
+  requiredCapitalKrwMax: number;
+  updatedAt: string | null;
+};
+
 export type MiningSwitch = { id: string; engaged: boolean };
 
 function requestKey(prefix: string): string {
@@ -246,6 +255,19 @@ export const miningAdmin = {
   },
   rejectHighValueReview(reviewId: string, reason: string): Promise<AdminResult<HighValueReview>> {
     return mutation("POST", `/admin/mining/high-value-reviews/${encodeURIComponent(reviewId)}/reject`, { reason }, "high-value-reject");
+  },
+  getTrialConfig(): Promise<AdminResult<MiningTrialConfig>> {
+    return adminFetch("GET", "/admin/mining/trial-config");
+  },
+  updateTrialConfig(body: {
+    welcomeKrw: number;
+    profitCapKrw: number;
+    defaultMaxParticipations: number;
+    requiredCapitalKrwMin: number;
+    requiredCapitalKrwMax: number;
+    reason: string;
+  }): Promise<AdminResult<MiningTrialConfig>> {
+    return mutation("PATCH", "/admin/mining/trial-config", body, "trial-config-update");
   },
   listSwitches(): Promise<AdminResult<{ version: 1; items: MiningSwitch[] }>> {
     return adminFetch("GET", "/admin/system-control/switches");
