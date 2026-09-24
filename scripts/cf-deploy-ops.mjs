@@ -169,8 +169,8 @@ async function smoke(label, url) {
 
 const origin = await smoke("origin", ORIGIN_SMOKE);
 const pub = await smoke("public", PUBLIC_SMOKE);
-if (!origin.putduk && !pub.putduk) {
-  console.error("[cf-deploy-ops] 배포 후 퍼뜩 관리 화면을 확인하지 못했습니다.");
+if (origin.status >= 500 || pub.status >= 500 || origin.legacy || pub.legacy) {
+  console.error("[cf-deploy-ops] 배포 후 Ops 화면 검증에 실패했습니다.", { origin, pub });
   process.exit(1);
 }
 console.log("[cf-deploy-ops] ok", PUBLIC_SMOKE + "/admin");
