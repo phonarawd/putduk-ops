@@ -1,8 +1,7 @@
 ﻿#!/usr/bin/env node
 /**
  * Deploy this Vinext admin to the live ops origin worker.
- * ops.putduk.com → hiptk-ops-proxy → https://ai-profit-ops.ebay-adapter.workers.dev
- * Do not attach ops.putduk.com here — the proxy already owns that hostname.
+ * ops.putduk.com → ai-profit-ops Worker in the PUTDUK Cloudflare account.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -18,7 +17,7 @@ const ACCOUNT_ID =
   process.env.CLOUDFLARE_ACCOUNT_ID || "9dc502d4ef06b3b5374591de6e6933ca";
 const ORIGIN_SMOKE =
   process.env.OPS_ORIGIN_SMOKE ||
-  "https://ai-profit-ops.ebay-adapter.workers.dev";
+  "https://ai-profit-ops.putduk-landing.workers.dev";
 const PUBLIC_SMOKE = process.env.OPS_PUBLIC_SMOKE || "https://ops.putduk.com";
 
 const noRebuild = process.argv.includes("--no-rebuild");
@@ -129,34 +128,28 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
   console.log("[cf-deploy-ops] custom domain READY ops.putduk.com -> " + WORKER_NAME);
 }
 
-const zoneId = process.env.CLOUDFLARE_ZONE_ID || "c9e6c93451c3c2e107a1eca511bedaba";
-if (process.env.CLOUDFLARE_API_TOKEN) {
-  const purge = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ hosts: ["ops.putduk.com"] }),
-    },
-  );
-  const body = await purge.json().catch(() => ({}));
-  console.log(
-    `[cf-deploy-ops] purge ops.putduk.com ${purge.status} success=${Boolean(body.success)}`,
-  );
-}
-
 async function smoke(label, url) {
   const target = `${url.replace(/\/$/, "")}/admin?cb=${Date.now()}`;
   let last;
   for (let attempt = 1; attempt <= 8; attempt++) {
-    const res = await fetch(target, {
-      redirect: "follow",
-      headers: { "cache-control": "no-cache" },
-    });
-    const html = await res.text();
+    let res;
+    let html = "";
+    try {
+      res = await fetch(target, {
+        redirect: "follow",
+        headers: { "cache-control": "no-cache" },
+      });
+      html = await res.text();
+    } catch (error) {
+      console.log(
+        `[cf-deploy-ops] smoke ${label} #${attempt} network error=${error?.message || error}`,
+      );
+      if (attempt < 8) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        continue;
+      }
+      throw error;
+    }
     const title = (html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
     const putduk = html.includes("퍼뜩") || title.includes("퍼뜩");
     const legacy = html.includes("AI Profit OS Ops");
