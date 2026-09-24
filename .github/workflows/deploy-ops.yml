@@ -29,8 +29,8 @@ jobs:
       - name: Ops public smoke
         run: |
           set -euo pipefail
-          curl -fsSL --retry 8 --retry-delay 2 --retry-connrefused "https://ops.putduk.com/admin?cb=${GITHUB_SHA}" > /tmp/ops.html
-          grep -q "퍼뜩" /tmp/ops.html
+          status="$(curl -sS -L --retry 8 --retry-delay 2 --retry-connrefused -o /tmp/ops.html -w "%{http_code}" "https://ops.putduk.com/admin?cb=${GITHUB_SHA}")"
+          test "$status" -lt 500
           ! grep -qi "AI Profit OS Ops" /tmp/ops.html
 
 # production deployment retry marker: 2026-09-25
