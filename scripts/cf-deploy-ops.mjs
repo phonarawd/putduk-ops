@@ -88,6 +88,47 @@ run(process.execPath, [
   "--keep-vars",
 ]);
 
+if (process.env.CLOUDFLARE_API_TOKEN) {
+  const ACCOUNT = "9dc502d4ef06b3b5374591de6e6933ca";
+  const ZONE = "c9e6c93451c3c2e107a1eca511bedaba";
+  const DOMAIN_API = "https://api.cloudflare.com/client/v4";
+  const headers = {
+    authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+    "content-type": "application/json",
+  };
+  if (ACCOUNT_ID !== ACCOUNT || zoneId !== ZONE) {
+    console.error("[cf-deploy-ops] refusing non-PUTDUK Cloudflare target");
+    process.exit(1);
+  }
+  async function cf(path, init = {}) {
+    const response = await fetch(DOMAIN_API + path, { ...init, headers: { ...headers, ...(init.headers || {}) } });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.success === false) {
+      throw new Error(`Cloudflare request failed ${response.status}: ${JSON.stringify(body.errors || body)}`);
+    }
+    return body.result;
+  }
+  const domains = await cf(`/accounts/${ACCOUNT}/workers/domains?zone_id=${ZONE}&hostname=ops.putduk.com`);
+  for (const domain of domains || []) {
+    if (domain.service !== WORKER_NAME) {
+      console.log(`[cf-deploy-ops] detaching ops.putduk.com from ${domain.service}`);
+      await cf(`/accounts/${ACCOUNT}/workers/domains/${domain.id}`, { method: "DELETE" });
+    }
+  }
+  const current = await cf(`/accounts/${ACCOUNT}/workers/domains?zone_id=${ZONE}&hostname=ops.putduk.com&service=${encodeURIComponent(WORKER_NAME)}`);
+  if (!(current || []).length) {
+    await cf(`/accounts/${ACCOUNT}/workers/domains`, {
+      method: "PUT",
+      body: JSON.stringify({ hostname: "ops.putduk.com", service: WORKER_NAME }),
+    });
+  }
+  const verify = await cf(`/accounts/${ACCOUNT}/workers/domains?zone_id=${ZONE}&hostname=ops.putduk.com`);
+  if (!(verify || []).some((domain) => domain.service === WORKER_NAME)) {
+    throw new Error("ops.putduk.com custom-domain verification failed");
+  }
+  console.log("[cf-deploy-ops] custom domain READY ops.putduk.com -> " + WORKER_NAME);
+}
+
 const zoneId = process.env.CLOUDFLARE_ZONE_ID || "c9e6c93451c3c2e107a1eca511bedaba";
 if (process.env.CLOUDFLARE_API_TOKEN) {
   const purge = await fetch(
