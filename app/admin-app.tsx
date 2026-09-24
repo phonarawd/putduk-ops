@@ -150,16 +150,12 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const [foldOpen, setFoldOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
-  const [mineTheme, setMineTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
+  const [mineTheme, setMineTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
     const stored = window.localStorage.getItem("putduk-mine-theme");
-    if (stored === "dark" || stored === "light") {
-      setMineTheme(stored);
-      return;
-    }
-    setMineTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  }, []);
+    if (stored === "dark" || stored === "light") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
 
   useEffect(() => {
     document.documentElement.dataset.mineTheme = mineTheme;
