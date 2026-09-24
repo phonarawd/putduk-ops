@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env node
 /**
  * Deploy this Vinext admin to the live ops origin worker.
- * ops.hiptk.app → hiptk-ops-proxy → https://ai-profit-ops.ebay-adapter.workers.dev
- * Do not attach ops.hiptk.app here — the proxy already owns that hostname.
+ * ops.putduk.com → hiptk-ops-proxy → https://ai-profit-ops.ebay-adapter.workers.dev
+ * Do not attach ops.putduk.com here — the proxy already owns that hostname.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -19,7 +19,7 @@ const ACCOUNT_ID =
 const ORIGIN_SMOKE =
   process.env.OPS_ORIGIN_SMOKE ||
   "https://ai-profit-ops.ebay-adapter.workers.dev";
-const PUBLIC_SMOKE = process.env.OPS_PUBLIC_SMOKE || "https://ops.hiptk.app";
+const PUBLIC_SMOKE = process.env.OPS_PUBLIC_SMOKE || "https://ops.putduk.com";
 
 const noRebuild = process.argv.includes("--no-rebuild");
 
@@ -98,12 +98,12 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
         authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({ hosts: ["ops.hiptk.app"] }),
+      body: JSON.stringify({ hosts: ["ops.putduk.com"] }),
     },
   );
   const body = await purge.json().catch(() => ({}));
   console.log(
-    `[cf-deploy-ops] purge ops.hiptk.app ${purge.status} success=${Boolean(body.success)}`,
+    `[cf-deploy-ops] purge ops.putduk.com ${purge.status} success=${Boolean(body.success)}`,
   );
 }
 
