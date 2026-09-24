@@ -13,6 +13,8 @@ import {
   Package,
   Settings,
   Sparkles,
+  Sun,
+  Moon,
   UserRoundCheck,
   UsersRound,
   WalletCards,
@@ -148,6 +150,21 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const [foldOpen, setFoldOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<AdminSession>({ connected: false, mode: origin.mode });
+  const [mineTheme, setMineTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("putduk-mine-theme");
+    if (stored === "dark" || stored === "light") {
+      setMineTheme(stored);
+      return;
+    }
+    setMineTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.mineTheme = mineTheme;
+    window.localStorage.setItem("putduk-mine-theme", mineTheme);
+  }, [mineTheme]);
 
   useEffect(() => {
     if (!adapter) return;
@@ -210,13 +227,13 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
   const userId = route.startsWith("/users/") ? decodeURIComponent(route.split("/").pop() || "") : "";
 
   return (
-    <div className="admin mine-os-shell">
+    <div className={`admin mine-os-shell mine-theme-${mineTheme}`}>
       <aside className={`side ${mobile ? "open" : ""}`}>
         <div className="brand mine-brand">
           <span>◆</span>
           <div>
-            <b>PUTDUK MINE OS</b>
-            <small>Mineral Luxury · {brandModeLabel(origin)}</small>
+            <b>퍼뜩 채굴 운영센터</b>
+            <small>운영 제어센터 · {brandModeLabel(origin)}</small>
           </div>
           <button type="button" onClick={() => setMobile(false)}>
             <X />
@@ -335,10 +352,19 @@ export function AdminApp({ route: initialRoute }: { route: string }) {
             <Menu />
           </button>
           <div className="crumb">
-            <span>PUTDUK MINE OS</span>
+            <span>퍼뜩 채굴 운영센터</span>
             <b>{title}</b>
           </div>
           <div className="topright">
+            <button
+              type="button"
+              className="mine-theme-toggle"
+              aria-label={mineTheme === "dark" ? "밝은 화면으로 전환" : "어두운 화면으로 전환"}
+              onClick={() => setMineTheme((current) => current === "dark" ? "light" : "dark")}
+            >
+              {mineTheme === "dark" ? <Sun /> : <Moon />}
+              <span>{mineTheme === "dark" ? "밝은 화면" : "어두운 화면"}</span>
+            </button>
             {origin.mode === "isolated-qa" && adapter.setStoreReady ? (
               <button
                 type="button"
