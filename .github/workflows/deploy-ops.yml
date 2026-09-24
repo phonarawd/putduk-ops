@@ -32,3 +32,5 @@ jobs:
           curl -fsSL --retry 8 --retry-delay 2 --retry-connrefused "https://ops.putduk.com/admin?cb=${GITHUB_SHA}" > /tmp/ops.html
           grep -q "퍼뜩" /tmp/ops.html
           ! grep -qi "AI Profit OS Ops" /tmp/ops.html
+
+# production deployment retry marker: 2026-09-25
