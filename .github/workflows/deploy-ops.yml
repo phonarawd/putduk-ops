@@ -1,6 +1,9 @@
 name: deploy-ops
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -17,8 +20,15 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Deploy to ai-profit-ops origin
+      - name: Deploy and attach ops.putduk.com
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: "9dc502d4ef06b3b5374591de6e6933ca"
+          CLOUDFLARE_ZONE_ID: "c9e6c93451c3c2e107a1eca511bedaba"
         run: npm run deploy:ops
+      - name: Ops public smoke
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 8 --retry-delay 2 --retry-connrefused "https://ops.putduk.com/admin?cb=${GITHUB_SHA}" > /tmp/ops.html
+          grep -q "퍼뜩" /tmp/ops.html
+          ! grep -qi "AI Profit OS Ops" /tmp/ops.html
