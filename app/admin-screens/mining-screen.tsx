@@ -14,6 +14,7 @@ import {
   settlementStatusLabel,
   highValueStatusLabel,
   type HighValueReview,
+  type MiningTrialConfig,
   type MineDetail,
   type MineSummary,
   type MiningSwitch,
@@ -52,6 +53,7 @@ export function MiningScreen({ route, adminId, notify }: Props) {
   if (route === "/mine/positions") return <PositionManagement />;
   if (route === "/mine/settlements") return <SettlementManagement notify={notify} />;
   if (route === "/mine/high-value") return <HighValueManagement notify={notify} />;
+  if (route === "/mine/trial") return <TrialConfigManagement notify={notify} />;
   if (route === "/mine/system") return <MiningSystemControl notify={notify} />;
   return null;
 }
@@ -140,6 +142,12 @@ function MiningToday() {
           alert={(highValuePending?.length ?? 0) > 0}
         />
         <TaskCard
+          href="/mine/trial"
+          label="체험 설정"
+          value="설정 열기"
+          note="체험 지급·상한·횟수·자격 기준"
+        />
+        <TaskCard
           href="/mine/settlements"
           label="정산 오류"
           value={loading ? "확인 중" : `${settlementAttention}건`}
@@ -210,6 +218,189 @@ function TaskCard({
   const className = `mine-task-card${muted ? " is-muted" : ""}${alert ? " is-alert" : ""}`;
   if (!href) return <div className={className}>{content}</div>;
   return <Link className={className} href={navHref(href)}>{content}</Link>;
+}
+
+function TrialConfigManagement({ notify }: { notify: Notify }) {
+  const [config, setConfig] = useState<MiningTrialConfig | null>(null);
+  const [form, setForm] = useState({
+    welcomeKrw: "",
+    profitCapKrw: "",
+    defaultMaxParticipations: "",
+    requiredCapitalKrwMin: "",
+    requiredCapitalKrwMax: "",
+    reason: "체험 운영 정책 변경",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = async () => {
+    setError("");
+    const result = await miningAdmin.getTrialConfig();
+    if (!result.ok) {
+      setConfig(null);
+      setError(miningFailureMessage(result));
+      return;
+    }
+    setConfig(result.data);
+    setForm({
+      welcomeKrw: String(result.data.welcomeKrw),
+      profitCapKrw: String(result.data.profitCapKrw),
+      defaultMaxParticipations: String(result.data.defaultMaxParticipations),
+      requiredCapitalKrwMin: String(result.data.requiredCapitalKrwMin),
+      requiredCapitalKrwMax: String(result.data.requiredCapitalKrwMax),
+      reason: "",
+    });
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const save = async () => {
+    const values = {
+      welcomeKrw: Number(form.welcomeKrw),
+      profitCapKrw: Number(form.profitCapKrw),
+      defaultMaxParticipations: Number(form.defaultMaxParticipations),
+      requiredCapitalKrwMin: Number(form.requiredCapitalKrwMin),
+      requiredCapitalKrwMax: Number(form.requiredCapitalKrwMax),
+      reason: form.reason.trim(),
+    };
+    if (!values.reason || values.reason.length < 8) {
+      setError("변경 사유는 8자 이상 입력해 주세요.");
+      return;
+    }
+    if (
+      !Number.isInteger(values.welcomeKrw) ||
+      !Number.isInteger(values.profitCapKrw) ||
+      !Number.isInteger(values.defaultMaxParticipations) ||
+      !Number.isInteger(values.requiredCapitalKrwMin) ||
+      !Number.isInteger(values.requiredCapitalKrwMax)
+    ) {
+      setError("모든 금액과 횟수는 정수로 입력해 주세요.");
+      return;
+    }
+    if (values.requiredCapitalKrwMin > values.requiredCapitalKrwMax) {
+      setError("최소 체험원금이 최대 체험원금보다 클 수 없습니다.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    try {
+      const result = await miningAdmin.updateTrialConfig(values);
+      if (!result.ok) {
+        setError(miningFailureMessage(result));
+        return;
+      }
+      setConfig(result.data);
+      setForm((current) => ({
+        ...current,
+        welcomeKrw: String(result.data.welcomeKrw),
+        profitCapKrw: String(result.data.profitCapKrw),
+        defaultMaxParticipations: String(result.data.defaultMaxParticipations),
+        requiredCapitalKrwMin: String(result.data.requiredCapitalKrwMin),
+        requiredCapitalKrwMax: String(result.data.requiredCapitalKrwMax),
+        reason: "",
+      }));
+      notify("체험 설정을 서버에 저장했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mine-stack" data-testid="mine-trial-config">
+      <section className="mine-hero">
+        <div>
+          <small>PUTDUK MINE OS · TRIAL</small>
+          <h2>체험 채굴 설정</h2>
+          <p>체험 프로그램의 원금 기준, 수익 상한, 횟수, 자격 범위를 서버 설정과 동기화합니다.</p>
+        </div>
+        <button type="button" className="mine-button mine-button-ghost" onClick={() => void load()} disabled={busy}>
+          최신 설정
+        </button>
+      </section>
+
+      {error ? <MineError message={error} /> : null}
+
+      <section className="panel">
+        <div className="panelhead">
+          <div>
+            <h2>현재 서버 설정</h2>
+            <p>저장 성공 응답으로만 화면 값을 확정합니다. 브라우저가 계산한 값은 운영 기준이 아닙니다.</p>
+          </div>
+        </div>
+
+        {!config ? (
+          <p className="ops-hint">설정을 불러오는 중…</p>
+        ) : (
+          <div className="mine-form-grid">
+            <label>
+              <span>체험 지급액 (KRW)</span>
+              <input
+                value={form.welcomeKrw}
+                onChange={(e) => setForm((s) => ({ ...s, welcomeKrw: e.target.value }))}
+                inputMode="numeric"
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>체험 수익 상한 (KRW)</span>
+              <input
+                value={form.profitCapKrw}
+                onChange={(e) => setForm((s) => ({ ...s, profitCapKrw: e.target.value }))}
+                inputMode="numeric"
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>기본 체험 횟수</span>
+              <input
+                value={form.defaultMaxParticipations}
+                onChange={(e) => setForm((s) => ({ ...s, defaultMaxParticipations: e.target.value }))}
+                inputMode="numeric"
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>최소 체험원금 (KRW)</span>
+              <input
+                value={form.requiredCapitalKrwMin}
+                onChange={(e) => setForm((s) => ({ ...s, requiredCapitalKrwMin: e.target.value }))}
+                inputMode="numeric"
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>최대 체험원금 (KRW)</span>
+              <input
+                value={form.requiredCapitalKrwMax}
+                onChange={(e) => setForm((s) => ({ ...s, requiredCapitalKrwMax: e.target.value }))}
+                inputMode="numeric"
+                disabled={busy}
+              />
+            </label>
+            <label className="mine-form-wide">
+              <span>변경 사유</span>
+              <textarea
+                value={form.reason}
+                onChange={(e) => setForm((s) => ({ ...s, reason: e.target.value }))}
+                rows={3}
+                disabled={busy}
+              />
+            </label>
+          </div>
+        )}
+
+        <div className="panel-actions">
+          <button type="button" className="mine-button mine-button-primary" onClick={() => void save()} disabled={busy || !config}>
+            {busy ? "저장 중…" : "서버 설정 저장"}
+          </button>
+          {config?.updatedAt ? <span className="ops-hint">마지막 변경 {new Date(config.updatedAt).toLocaleString("ko-KR")}</span> : null}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function HighValueManagement({ notify }: { notify: Notify }) {
