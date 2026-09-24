@@ -96,7 +96,7 @@ if (process.env.CLOUDFLARE_API_TOKEN) {
     authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
     "content-type": "application/json",
   };
-  if (ACCOUNT_ID !== ACCOUNT || zoneId !== ZONE) {
+  if (ACCOUNT_ID !== ACCOUNT || ZONE !== ZONE) {
     console.error("[cf-deploy-ops] refusing non-PUTDUK Cloudflare target");
     process.exit(1);
   }
