@@ -56,6 +56,7 @@ const groups = [
   { label: "운용 현황", href: "/mine/positions", icon: UsersRound },
   { label: "정산 관리", href: "/mine/settlements", icon: WalletCards },
   { label: "고액운용", href: "/mine/high-value", icon: ShieldCheck },
+  { label: "체험 설정", href: "/mine/trial", icon: Sparkles },
   { label: "시스템 제어", href: "/mine/system", icon: Settings },
   {
     label: "회원",
@@ -454,6 +455,7 @@ function description(r: string) {
   if (r === "/mine/positions") return "사용자와 광산별 실제 운용 상태, 원금, 변경 이력을 조회합니다.";
   if (r === "/mine/settlements") return "정산 결과와 수익 발생 구간을 확인하고 실패·검토필요 건만 재실행합니다.";
   if (r === "/mine/high-value") return "고액운용 검토 요청을 실제 Backend 기준으로 승인하거나 거절합니다.";
+  if (r === "/mine/trial") return "체험 채굴의 지급액·수익 상한·횟수·자격 범위를 서버 설정으로 관리합니다.";
   if (r === "/mine/system") return "전체 신규 운용과 정산을 서버 안전 제어로 중지하거나 해제합니다.";
   if (r === "/catalog") return "기존 상품 운영 화면입니다. 광산 운영과 분리해 보존합니다.";
   if (r === "/users") return "최근 가입 회원부터 보여 줍니다. 번호로 한 명만 찾을 수도 있어요.";
@@ -497,6 +499,7 @@ const KNOWN_EXACT = new Set([
   "/mine/positions",
   "/mine/settlements",
   "/mine/high-value",
+  "/mine/trial",
   "/mine/system",
   "/users",
   "/catalog",
